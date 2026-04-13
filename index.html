@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en" class="dark-theme">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEVIKAPS - AI Lesson & Exam Planner</title>
+    <meta name="description" content="AI Assistant for Cameroon Competency Based Approach (CBA)">
+    <link rel="stylesheet" href="style.css">
+    <!-- Phosphor Icons for premium aesthetic -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- PDF Exporting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+
+<body>
+    <div id="bg-elements">
+        <div class="blob shape-1"></div>
+        <div class="blob shape-2"></div>
+        <div class="blob shape-3"></div>
+    </div>
+
+    <!-- Login View -->
+    <div id="login-view" class="view active-view">
+        <div class="glass-panel login-card">
+            <div class="logo-container">
+                <img src="logo.png" alt="NEVIKAPS Logo" class="logo-icon-img" onerror="this.outerHTML='<i class=\'ph ph-exam logo-icon\'></i>';">
+                <h1>NEVIKAPS</h1>
+            </div>
+            <p class="subtitle">AI Assistant for Cameroon CBA Educators</p>
+
+            <form id="login-form">
+                <div class="input-group">
+                    <label for="username">Teacher ID</label>
+                    <div class="input-wrapper">
+                        <i class="ph ph-user"></i>
+                        <input type="text" id="username" placeholder="Enter your ID" required>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label for="password">Password</label>
+                    <div class="input-wrapper">
+                        <i class="ph ph-lock"></i>
+                        <input type="password" id="password" placeholder="••••••••" required>
+                    </div>
+                </div>
+                <div
+                    style="font-size: 0.8rem; color: var(--clr-text-muted); text-align: center; margin-bottom: 0.5rem;">
+                    *If you don't have an ID, we'll create a local profile for you.
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">
+                    <span>Login / Create Profile</span>
+                    <i class="ph ph-arrow-right"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Dashboard View -->
+    <div id="dashboard-view" class="view">
+        <nav class="sidebar glass-panel">
+            <div class="logo-container small">
+                <img src="logo.png" alt="NEVIKAPS Logo" class="logo-icon-img-small" onerror="this.outerHTML='<i class=\'ph ph-exam logo-icon\'></i>';">
+                <h2>NEVIKAPS</h2>
+            </div>
+
+            <div class="nav-links">
+                <a href="#" class="nav-item active" data-target="dashboard-content">
+                    <i class="ph ph-squares-four"></i> Dashboard
+                </a>
+                <a href="#" class="nav-item" data-target="history-view">
+                    <i class="ph ph-clock-counter-clockwise"></i> History / Saves
+                </a>
+                <div class="nav-divider"></div>
+                <h3 class="nav-heading">Generators</h3>
+                <a href="#" class="nav-item" data-target="lesson-planner">
+                    <i class="ph ph-book-open"></i> Lesson Planner
+                </a>
+                <a href="#" class="nav-item" data-target="exam-generator">
+                    <i class="ph ph-file-text"></i> Exam Generator
+                </a>
+                <a href="#" class="nav-item" data-target="syllabus-ingestion">
+                    <i class="ph ph-upload-simple"></i> Syllabus Parser
+                </a>
+                <div class="nav-divider"></div>
+                <h3 class="nav-heading">AI Studio</h3>
+                <a href="#" class="nav-item" data-target="image-generator">
+                    <i class="ph ph-image"></i> Image Generator
+                </a>
+                <a href="#" class="nav-item" data-target="ai-assistant">
+                    <i class="ph ph-robot"></i> AI Assistant
+                </a>
+                <div class="nav-divider"></div>
+                <h3 class="nav-heading">Classroom Tools</h3>
+                <a href="#" class="nav-item" data-target="worksheet-generator">
+                    <i class="ph ph-files"></i> Worksheets
+                </a>
+                <a href="#" class="nav-item" data-target="report-card-generator">
+                    <i class="ph ph-trend-up"></i> Report Cards
+                </a>
+            </div>
+
+            <div class="user-profile">
+                <div class="avatar">
+                    <img src="https://ui-avatars.com/api/?name=Teacher&background=random&color=fff" alt="Teacher">
+                </div>
+                <div class="user-info">
+                    <span class="user-name">Ms. Akenji</span>
+                    <span class="user-role">Primary 4</span>
+                </div>
+                <button id="logout-btn" class="icon-btn" title="Logout">
+                    <i class="ph ph-sign-out"></i>
+                </button>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <header class="top-header">
+                <h2 id="page-title">Welcome back, Educator</h2>
+                <div class="header-actions">
+                    <button class="btn btn-icon glass-btn"><i class="ph ph-bell"></i></button>
+                    <button class="btn btn-icon glass-btn" id="theme-toggle"><i class="ph ph-sun"></i></button>
+                </div>
+            </header>
+
+            <div class="content-area">
+                <!-- Dashboard Content -->
+                <div id="dashboard-content" class="content-section active-section">
+                    <div class="stats-grid">
+                        <div class="stat-card glass-panel">
+                            <div class="stat-icon blue"><i class="ph ph-book-open"></i></div>
+                            <div class="stat-details">
+                                <span class="stat-value">12</span>
+                                <span class="stat-label">Lesson Plans Generated</span>
+                            </div>
+                        </div>
+                        <div class="stat-card glass-panel">
+                            <div class="stat-icon purple"><i class="ph ph-file-text"></i></div>
+                            <div class="stat-details">
+                                <span class="stat-value">4</span>
+                                <span class="stat-label">Exams Created</span>
+                            </div>
+                        </div>
+                        <div class="stat-card glass-panel">
+                            <div class="stat-icon orange"><i class="ph ph-clock"></i></div>
+                            <div class="stat-details">
+                                <span class="stat-value">8h</span>
+                                <span class="stat-label">Time Saved this Week</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="quick-actions">
+                        <h3>Quick Actions</h3>
+                        <div class="action-cards">
+                            <div class="action-card glass-panel" onclick="navigateTo('lesson-planner')">
+                                <div class="action-img gradient-1">
+                                    <i class="ph ph-magic-wand"></i>
+                                </div>
+                                <h4>Generate Lesson</h4>
+                                <p>CBA structured lesson plan</p>
+                            </div>
+                            <div class="action-card glass-panel" onclick="navigateTo('exam-generator')">
+                                <div class="action-img gradient-2">
+                                    <i class="ph ph-exam"></i>
+                                </div>
+                                <h4>Create Exam</h4>
+                                <p>Bloom's Taxonomy aligned</p>
+                            </div>
+                            <div class="action-card glass-panel" onclick="navigateTo('worksheet-generator')">
+                                <div class="action-img gradient-1"
+                                    style="background: linear-gradient(135deg, #10b981, #059669);">
+                                    <i class="ph ph-files"></i>
+                                </div>
+                                <h4>Generate Worksheet</h4>
+                                <p>Printable class exercises</p>
+                            </div>
+                            <div class="action-card glass-panel" onclick="navigateTo('syllabus-ingestion')">
+                                <div class="action-img gradient-2" style="background: linear-gradient(135deg, #0ea5e9, #3b82f6);">
+                                    <i class="ph ph-upload-simple"></i>
+                                </div>
+                                <h4>Upload Syllabus</h4>
+                                <p>AI curriculum extraction</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="history-view" class="content-section">
+                    <div class="history-header"
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h3>Your Generated Content</h3>
+                        <button class="btn btn-secondary glass-btn" onclick="DB.clearHistory()"><i
+                                class="ph ph-trash"></i> Clear History</button>
+                    </div>
+                    <div class="history-grid" id="history-container">
+                        <div class="empty-state">
+                            <i class="ph ph-file-dashed pulse-icon"></i>
+                            <p>You have not generated anything yet.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Syllabus Ingestion Section -->
+                <div id="syllabus-ingestion" class="content-section">
+                    <div class="form-layout">
+                        <div class="form-panel glass-panel">
+                            <h3>Syllabus PDF Upload</h3>
+                            <form id="syllabus-form">
+                                <div class="form-grid">
+                                    <div class="input-group full-width">
+                                        <label for="syllabus-file">Upload Syllabus (PDF)</label>
+                                        <input type="file" id="syllabus-file" accept=".pdf" required style="padding: 1rem; border: 2px dashed var(--clr-border); background: rgba(0,0,0,0.02); text-align: center; cursor: pointer; border-radius: var(--border-radius-sm);">
+                                    </div>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="submit" class="btn btn-primary" id="btn-upload-syllabus" style="background: linear-gradient(135deg, #0ea5e9, #3b82f6); box-shadow: 0 4px 15px rgba(14, 165, 233, 0.4);">
+                                        <i class="ph ph-magic-wand"></i> Extract Curriculum
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="preview-panel glass-panel" id="syllabus-preview">
+                            <div class="empty-state">
+                                <div class="pulse-icon"><i class="ph ph-file-pdf"></i></div>
+                                <h3>Syllabus Extraction</h3>
+                                <p>Upload a Syllabus PDF document and the AI will automatically parse the subjects, classes, themes, and topics.</p>
+                            </div>
+                            <!-- Result will display here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lesson Planner Section -->
+                <div id="lesson-planner" class="content-section">
+                    <div class="form-layout">
+                        <div class="form-panel glass-panel">
+                            <h3>Lesson Details</h3>
+                            <form id="lesson-form">
+                                <div class="form-grid">
+                                    <div class="input-group">
+                                        <label for="lesson-subject">Subject</label>
+                                        <select id="lesson-subject" required>
+                                            <option value="">Select Subject</option>
+                                            <option value="Mathematics">Mathematics</option>
+                                            <option value="English Language">English Language</option>
+                                            <option value="Science and Technology">Science and Technology</option>
+                                            <option value="Civic Education">Civic Education</option>
+                                            <option value="ICT">ICT</option>
+                                        </select>
+                                    </div>
+                                    <div class="input-group">
+                                        <label for="lesson-class">Class / Grade</label>
+                                        <select id="lesson-class" required>
+                                            <option value="">Select Class</option>
+                                            <option value="Nursery 1">Nursery 1</option>
+                                            <option value="Nursery 2">Nursery 2</option>
+                                            <option value="Primary 1">Primary 1</option>
+                                            <option value="Primary 2">Primary 2</option>
+                                            <option value="Primary 3">Primary 3</option>
+                                            <option value="Primary 4">Primary 4</option>
+                                            <option value="Primary 5">Primary 5</option>
+                                            <option value="Primary 6">Primary 6</option>
+                                        </select>
+                                    </div>
+                                    <div class="input-group full-width">
+                                        <label for="lesson-theme">Learning Theme / Strand</label>
+                                        <input type="text" id="lesson-theme" placeholder="e.g., Numbers, Living Things"
+                                            required>
+                                    </div>
+                                    <div class="input-group full-width">
+                                        <label for="lesson-topic">Topic</label>
+                                        <input type="text" id="lesson-topic" placeholder="e.g., Fractions" required>
+                                    </div>
+                                    <div class="input-group full-width">
+                                        <label for="lesson-subtopic">Sub-topic</label>
+                                        <input type="text" id="lesson-subtopic" placeholder="e.g., Improper Fractions"
+                                            required>
+                                    </div>
+                                    <div class="input-group">
+                                        <label for="lesson-duration">Duration</label>
+                                        <select id="lesson-duration" required>
+                                            <option value="30 minutes">30 minutes</option>
+                                            <option value="40 minutes" selected>40 minutes</option>
+                                            <option value="60 minutes">60 minutes</option>
+                                            <option value="80 minutes">80 minutes (Double Period)</option>
+                                        </select>
+                                    </div>
+                                    <div class="input-group">
+                                        <label for="lesson-date">Date</label>
+                                        <input type="date" id="lesson-date" required>
+                                    </div>
+                                    <div class="input-group full-width">
+                                        <label for="lesson-custom">Custom AI Instructions</label>
+                                        <textarea id="lesson-custom" rows="2"
+                                            placeholder="e.g., Make sure to mention the geography of Mount Cameroon"
+                                            style="width: 100%; padding: 0.85rem; border-radius: var(--border-radius-sm); border: 1px solid var(--clr-border); background: rgba(0,0,0,0.02); resize: vertical; font-family: 'Times New Roman', Times, serif;"></textarea>
+                                    </div>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="submit" class="btn btn-primary" id="btn-generate-lesson">
+                                        <i class="ph ph-sparkle"></i> Generate AI Lesson Plan
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="preview-panel glass-panel" id="lesson-preview">
+                            <div class="empty-state">
+                                <div class="pulse-icon"><i class="ph ph-magic-wand"></i></div>
+                                <h3>Ready to Generate</h3>
+                                <p>Fill the form to generate a CBA compliant lesson plan using NEVIKAPS AI.</p>
+                            </div>
+                            <!-- Result will display here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Exam Generator Section -->
+                <div id="exam-generator" class="content-section">
+                    <div class="form-layout">
+                        <div class="form-panel glass-panel">
+                            <h3>Examination Params</h3>
+                            <form id="exam-form">
+                                <div class="form-grid">
+                                    <div class="input-group">
+                                        <label for="exam-subject">Subject</label>
+                                        <select id="exam-subject" required>
+                                            <option value="">Select Subject</option>
+                                            <option value="Mathematics">Mathematics</option>
+                                            <option value="English Language">English Language</option>
+                                            <option value="Science and Technology">Science</option>
+                                        </select>
+                                    </div>
+                                    <div class="input-group">
+                                        <label for="exam-class">Class</label>
+                                        <select id="exam-class" required>
+                                            <option value="">Select Class</option>
+                                            <option value="Primary 4">Primary 4</option>
+                                            <option value="Primary 5">Primary 5</option>
+                                            <option value="Primary 6">Primary 6</option>
+                                        </select>
+                                    </div>
+                                    <div class="input-group full-width">
+                                        <label for="exam-topic">Topics Covered (Comma separated)</label>
+                                        <input type="text" id="exam-topic"
+                                            placeholder="e.g., Fractions, Decimals, Geometry" required>
+                                    </div>
+                                    <div class="input-group">
+                                        <label for="exam-number">Number of Questions</label>
+                                        <input type="number" id="exam-number" min="5" max="50" value="20" required>
+                                    </div>
+                                    <div class="input-group full-width">
+                                        <label>Question Types Allowed</label>
+                                        <div class="checkbox-grid">
+                                            <label class="checkbox-label"><input type="checkbox" name="qtype"
+                                                    value="Multiple Choice" checked> Multiple Choice</label>
+                                            <label class="checkbox-label"><input type="checkbox" name="qtype"
+                                                    value="Fill in the Blank" checked> Fill in Blank</label>
+                                            <label class="checkbox-label"><input type="checkbox" name="qtype"
+                                                    value="Short Answer" checked> Short Answer</label>
+                                            <label class="checkbox-label"><input type="checkbox" name="qtype"
+                                                    value="Theory" checked> Theory</label>
+                                            <label class="checkbox-label"><input type="checkbox" name="qtype"
+                                                    value="Problem Solving" checked> Problem Solving</label>
+                                            <label class="checkbox-label"><input type="checkbox" name="qtype"
+                                                    value="Essay"> Essay</label>
+                                        </div>
+                                    </div>
+                                    <div class="input-group full-width">
+                                        <label for="exam-custom">Custom AI Instructions</label>
+                                        <textarea id="exam-custom" rows="2"
+                                            placeholder="e.g., Include questions about recent local events"
+                                            style="width: 100%; padding: 0.85rem; border-radius: var(--border-radius-sm); border: 1px solid var(--clr-border); background: rgba(0,0,0,0.02); resize: vertical; font-family: 'Times New Roman', Times, serif;"></textarea>
+                                    </div>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="submit" class="btn btn-secondary" id="btn-generate-exam">
+                                        <i class="ph ph-brain"></i> Generate Bloom's Exam
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="preview-panel glass-panel" id="exam-preview">
+                            <div class="empty-state">
+                                <div class="pulse-icon"><i class="ph ph-exam"></i></div>
+                                <h3>Bloom's Exam</h3>
+                                <p>Generates balanced exams mapped to Remember, Understand, Apply, Analyze, Evaluate,
+                                    Create.</p>
+                            </div>
+                            <!-- Result will display here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Worksheet Generator Section -->
+                <div id="worksheet-generator" class="content-section">
+                    <div class="form-layout">
+                        <div class="form-panel glass-panel">
+                            <h3>Worksheet Details</h3>
+                            <form id="worksheet-form">
+                                <div class="form-grid">
+                                    <div class="input-group">
+                                        <label for="worksheet-subject">Subject</label>
+                                        <select id="worksheet-subject" required>
+                                            <option value="">Select Subject</option>
+                                            <option value="Mathematics">Mathematics</option>
+                                            <option value="English Language">English Language</option>
+                                            <option value="Science and Technology">Science and Technology</option>
+                                            <option value="Civic Education">Civic Education</option>
+                                            <option value="ICT">ICT</option>
+                                        </select>
+                                    </div>
+                                    <div class="input-group">
+                                        <label for="worksheet-class">Class / Grade</label>
+                                        <select id="worksheet-class" required>
+                                            <option value="">Select Class</option>
+                                            <option value="Nursery 1">Nursery 1</option>
+                                            <option value="Nursery 2">Nursery 2</option>
+                                            <option value="Primary 1">Primary 1</option>
+                                            <option value="Primary 2">Primary 2</option>
+                                            <option value="Primary 3">Primary 3</option>
+                                            <option value="Primary 4">Primary 4</option>
+                                            <option value="Primary 5">Primary 5</option>
+                                            <option value="Primary 6">Primary 6</option>
+                                        </select>
+                                    </div>
+                                    <div class="input-group full-width">
+                                        <label for="worksheet-topic">Topic / Sub-topic</label>
+                                        <input type="text" id="worksheet-topic" placeholder="e.g., Fractions, Pronouns"
+                                            required>
+                                    </div>
+                                    <div class="input-group full-width">
+                                        <label>Exercise Type</label>
+                                        <div class="checkbox-grid">
+                                            <label class="checkbox-label"><input type="radio" name="wtype"
+                                                    value="Standard Exercise" checked> Standard</label>
+                                            <label class="checkbox-label"><input type="radio" name="wtype"
+                                                    value="Matching Game"> Matching</label>
+                                            <label class="checkbox-label"><input type="radio" name="wtype"
+                                                    value="Fill in the Blanks"> Fill in Blanks</label>
+                                        </div>
+                                    </div>
+                                    <div class="input-group">
+                                        <label for="worksheet-number">Number of Questions</label>
+                                        <input type="number" id="worksheet-number" min="5" max="20" value="10" required>
+                                    </div>
+                                    <div class="input-group full-width">
+                                        <label for="worksheet-custom">Custom AI Instructions</label>
+                                        <textarea id="worksheet-custom" rows="2"
+                                            placeholder="e.g., Make the questions relatable to agriculture"
+                                            style="width: 100%; padding: 0.85rem; border-radius: var(--border-radius-sm); border: 1px solid var(--clr-border); background: rgba(0,0,0,0.02); resize: vertical; font-family: 'Times New Roman', Times, serif;"></textarea>
+                                    </div>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="submit" class="btn btn-primary"
+                                        style="background: linear-gradient(135deg, #10b981, #059669); color: white; border: none;"
+                                        id="btn-generate-worksheet">
+                                        <i class="ph ph-files"></i> Generate Worksheet
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="preview-panel glass-panel" id="worksheet-preview">
+                            <div class="empty-state">
+                                <div class="pulse-icon"><i class="ph ph-files"></i></div>
+                                <h3>Printable Worksheets</h3>
+                                <p>Generate specialized exercises for your learners.</p>
+                            </div>
+                            <!-- Result will display here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Report Card Generator Section -->
+                <div id="report-card-generator" class="content-section">
+                    <div class="form-layout">
+                        <div class="form-panel glass-panel">
+                            <h3>Student Information</h3>
+                            <form id="report-form">
+                                <div class="form-grid">
+                                    <div class="input-group full-width">
+                                        <label for="report-name">Student Name</label>
+                                        <input type="text" id="report-name" placeholder="e.g., John Doe" required>
+                                    </div>
+                                    <div class="input-group">
+                                        <label for="report-subject">Subject</label>
+                                        <input type="text" id="report-subject" placeholder="e.g., Mathematics" required>
+                                    </div>
+                                    <div class="input-group">
+                                        <label for="report-level">Performance Level</label>
+                                        <select id="report-level" required>
+                                            <option value="">Select Level</option>
+                                            <option value="Excellent">Excellent</option>
+                                            <option value="Very Good">Very Good</option>
+                                            <option value="Good">Good</option>
+                                            <option value="Average">Average</option>
+                                            <option value="Needs Improvement">Needs Improvement</option>
+                                        </select>
+                                    </div>
+                                    <div class="input-group full-width">
+                                        <label for="report-strengths">Strengths</label>
+                                        <input type="text" id="report-strengths"
+                                            placeholder="e.g., participates actively, grasps concepts quickly" required>
+                                    </div>
+                                    <div class="input-group full-width">
+                                        <label for="report-improve">Areas for Improvement</label>
+                                        <input type="text" id="report-improve"
+                                            placeholder="e.g., struggles with long division, needs to focus more"
+                                            required>
+                                    </div>
+                                    <div class="input-group full-width">
+                                        <label for="report-custom">Additional Remarks</label>
+                                        <textarea id="report-custom" rows="2" placeholder="e.g., A joy to have in class"
+                                            style="width: 100%; padding: 0.85rem; border-radius: var(--border-radius-sm); border: 1px solid var(--clr-border); background: rgba(0,0,0,0.02); resize: vertical; font-family: 'Times New Roman', Times, serif;"></textarea>
+                                    </div>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="submit" class="btn btn-primary"
+                                        style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border: none;"
+                                        id="btn-generate-report">
+                                        <i class="ph ph-trend-up"></i> Generate Comment
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="preview-panel glass-panel" id="report-preview">
+                            <div class="empty-state">
+                                <div class="pulse-icon"><i class="ph ph-trend-up"></i></div>
+                                <h3>Report Card Comments</h3>
+                                <p>Generate personalized, professional feedback for your students.</p>
+                            </div>
+                            <!-- Result will display here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dedicated Image Generator Section -->
+                <div id="image-generator" class="content-section">
+                    <div class="form-layout" style="grid-template-columns: 1fr; height: auto;">
+                        <div class="form-panel glass-panel" style="margin-bottom: 2rem;">
+                            <h3>Image Studio</h3>
+                            <form id="image-form">
+                                <div class="form-grid">
+                                    <div class="input-group full-width">
+                                        <label for="custom-image-prompt">Describe the visual you want:</label>
+                                        <textarea id="custom-image-prompt" rows="3" placeholder="e.g., A colorful vector illustration of an African village teaching community, educational style." required style="width: 100%; padding: 0.85rem; border-radius: var(--border-radius-sm); border: 1px solid var(--clr-border); background: rgba(0,0,0,0.02); resize: vertical; font-family: 'Times New Roman', Times, serif; color: var(--clr-text)"></textarea>
+                                    </div>
+                                </div>
+                                <div class="form-actions" style="margin-top: 1rem; position: static;">
+                                    <button type="submit" class="btn btn-primary" id="btn-generate-custom-image">
+                                        <i class="ph ph-image"></i> Generate Image
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="preview-panel glass-panel" id="custom-image-preview" style="text-align: center;">
+                            <div class="empty-state">
+                                <div class="pulse-icon"><i class="ph ph-image"></i></div>
+                                <h3>Pollinations AI Studio</h3>
+                                <p>Type a prompt above and instantly generate visual assets for your classes.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Assistant Section -->
+                <div id="ai-assistant" class="content-section">
+                    <div class="form-layout" style="grid-template-columns: 1fr; height: calc(100vh - 120px); display: flex; flex-direction: column;">
+                        
+                        <div class="preview-panel glass-panel" id="chat-history-container" style="flex: 1; overflow-y: auto; margin-bottom: 1rem; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+                            <div class="empty-state" style="margin: auto;" id="chat-empty">
+                                <div class="pulse-icon"><i class="ph ph-robot"></i></div>
+                                <h3>NEVIKAPS AI Teaching Assistant</h3>
+                                <p>Ask me to set specific questions, brainstorm games, or discuss CBA pedagogy!</p>
+                            </div>
+                        </div>
+
+                        <div class="form-panel glass-panel" style="padding: 1rem;">
+                            <form id="chat-form" style="display: flex; gap: 1rem;">
+                                <input type="text" id="chat-input" placeholder="e.g., List 4 multiple choice questions about Mount Cameroon..." required style="flex: 1; padding: 1rem; border: 1px solid var(--clr-border); border-radius: var(--border-radius-sm); background: rgba(0,0,0,0.02); color: var(--clr-text); font-family: 'Times New Roman', Times, serif; outline: none;">
+                                <button type="submit" class="btn btn-primary" style="padding: 1rem 2rem;">
+                                    <i class="ph ph-paper-plane-right"></i> Send
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- AI Loading Overlay -->
+    <div id="ai-loading" class="overlay hidden">
+        <div class="loading-card glass-panel">
+            <div class="loader-spinner"></div>
+            <h3 class="loading-title">NEVIKAPS AI is working...</h3>
+            <p class="loading-subtitle" id="loading-text">Synthesizing CBA competencies</p>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="ai-progress"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
