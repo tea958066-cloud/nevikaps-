@@ -328,7 +328,82 @@ app.post('/api/generate/exam', async (req, res) => {
             customInstructions: custom || 'None'
         }, null, 2);
 
-        const userPrompt = `Generate a complete, print-ready term examination using Bloom's Taxonomy.
+        const { enhancements = [] } = req.body;
+        const isNursery   = (req.body.class || '').toLowerCase().includes('nursery');
+        const hasStimulus = enhancements.includes('Include Stimulus');
+        const hasDiagrams = enhancements.includes('Include Diagrams');
+        const hasMatch    = (qtypes || []).includes('Match the Correct Answer');
+        const hasWordBank = (qtypes || []).includes('Word Bank');
+
+        const diagramRule = hasDiagrams
+            ? `\n\nDIAGRAM RULE: Wherever a diagram, illustration, or image would help a pupil understand or answer a question, insert a marker on its own line in EXACTLY this format (no extra punctuation):\n[DIAGRAM: a labelled diagram of the human digestive system]\nUse this for: science diagrams, maps, geometry figures, bar/pie charts, life cycle illustrations, body parts, plant structures, or any observation-based question. The marker will be replaced with a real generated image.`
+            : '';
+
+        const stimulusRule = hasStimulus
+            ? `\n\nSTIMULUS RULE: For the Multiple Choice section, open with a clearly labelled STIMULUS block BEFORE the questions:\n**Read the following carefully, then answer the questions below.**\n> [Write a short 3–5 sentence passage, OR a small data table with real values, OR a described scenario relevant to the topic]\nAll MCQ questions in that section must relate directly to the stimulus.`
+            : '';
+
+        const matchSection = hasMatch
+            ? `\n\n## SECTION F: Match the Correct Answer (Bloom's Level: Remember & Understand)\n**Instructions:** Draw a line OR write the correct letter from Column B next to each item in Column A.\n\nCreate a two-column matching table with 6–8 pairs. Use a Markdown table:\n\n| Column A (Term / Question) | Column B (Answer) |\n|---|---|\n| (item 1) | (answer — shuffled so order differs from Column A) |\n| ... | ... |\n\nEach correct match = 1 mark. Include this section's answers in the Marking Scheme.`
+            : '';
+
+        const wordBankSection = hasWordBank
+            ? `\n\n## SECTION G: Word Bank — Choose and Fill In\n**Instructions:** Choose the correct word from the box below and write it in the blank space.\n\n> **Word Bank:** [ word1 | word2 | word3 | word4 | word5 | word6 ]\n\nProvide 6 sentences, each missing one key word that is in the Word Bank above. The Word Bank words must exactly match the correct answers. Each blank = 1 mark. Include answers in the Marking Scheme.`
+            : '';
+
+        const userPrompt = isNursery
+            ? `Generate a fun, print-ready Nursery Activity Sheet (NOT a formal exam).
+
+Teacher Input:
+\`\`\`json
+${structuredInput}
+\`\`\`
+
+---
+
+NURSERY ACTIVITY SHEET FORMAT — Follow every rule below exactly:
+
+**HEADER (at the top of the sheet):**
+- School Name: _______________________
+- Name of Child: _______________________
+- Class: ${req.body.class || ''}
+- Subject: ${req.body.subject || ''}
+- Date: _______________________
+- Teacher: _______________________
+
+---
+
+**ACTIVITIES — Use ONLY these child-friendly activity types (choose the most suitable for the topic):**
+
+## ACTIVITY 1: Trace and Colour
+- Provide dotted letters, numbers, or shapes for the child to trace.
+- Include a colouring instruction (e.g., "Colour the apple RED").
+
+## ACTIVITY 2: Match the Pictures
+- Create a simple matching exercise (e.g., match animal to its name, number to objects).
+- Describe what pictures should be drawn (teacher will draw or print separately).
+
+## ACTIVITY 3: Circle the Correct Answer
+- Short picture-based questions where the child circles the right picture/word.
+- Use no more than 3 options per question.
+
+## ACTIVITY 4: Fill in the Missing Letter / Number
+- Provide sequences with one item missing (e.g., 1, 2, ___, 4 or A, B, ___, D).
+
+## ACTIVITY 5: Yes or No
+- Simple statements the child ticks YES or NO (with smiley/sad face symbols).
+
+---
+
+**RULES:**
+1. Keep all text VERY simple — single words or short phrases only.
+2. All ${req.body.number || 10} activities must be extremely age-appropriate for ${req.body.class || 'Nursery'}.
+3. Make the sheet fun, colourful (describe colours in instructions), and child-friendly.
+4. Use Cameroon-relevant context (local animals, foods, names) where appropriate.
+5. End with a TEACHER'S GUIDE section: correct answers and how to assess each activity.`
+
+            : `Generate a complete, print-ready term examination using Bloom's Taxonomy.
+${diagramRule}${stimulusRule}
 
 Teacher Input:
 \`\`\`json
@@ -353,35 +428,39 @@ EXAM FORMAT INSTRUCTIONS — Follow every rule below exactly:
 **SECTIONS — Structure the exam exactly like this:**
 
 ## SECTION A: Multiple Choice (Bloom's Level: Remember & Understand)
-- Write clear multiple choice questions with 4 options each (A, B, C, D)
-- Circle the correct answer instruction
-- Each question = 1 mark
+${hasStimulus ? '**Read the following carefully, then answer the questions below.**\n> [Insert a 3–5 sentence stimulus passage or data relevant to the topic here]\n' : ''}- Write clear multiple choice questions with 4 options each (A, B, C, D).
+- Instruction to pupils: *Circle the letter of the correct answer.*
+- Each question = 1 mark.
 
 ## SECTION B: Fill in the Blanks (Bloom's Level: Remember & Understand)
-- Provide sentences with one key word missing
-- Each blank = 1 mark
+- Provide sentences with one key word missing.
+- Each blank = 1 mark.
+${hasDiagrams ? '- Where appropriate, insert a [DIAGRAM: ...] marker so pupils observe and fill in labels or answers.' : ''}
 
 ## SECTION C: Short Answer Questions (Bloom's Level: Understand & Apply)
-- Questions requiring 1–3 sentence answers
-- Each question = 2 marks
+- Questions requiring 1–3 sentence answers.
+- Each question = 2 marks.
+${hasDiagrams ? '- Include at least one question with a [DIAGRAM: ...] marker that pupils must study and describe or label.' : ''}
 
 ## SECTION D: Problem Solving / Structured Questions (Bloom's Level: Apply & Analyze)
-- Practical questions requiring working out
-- Each question = 3–5 marks
+- Practical questions requiring working out or observation.
+- Each question = 3–5 marks.
+${hasDiagrams ? '- Include at least one [DIAGRAM: ...] marker for a chart, figure, or geometry diagram pupils must interpret.' : ''}
 
 ## SECTION E: Theory / Essay (Bloom's Level: Evaluate & Create)
-- Only include for Primary 4, 5, 6
-- Higher order thinking questions
-- Each question = 5–10 marks
+- Only include for Primary 4, 5, 6.
+- Higher order thinking questions.
+- Each question = 5–10 marks.
+${matchSection}${wordBankSection}
 
 ---
 
 **RULES:**
-1. Distribute all ${req.body.number || 20} questions across sections based on the question types allowed.
-2. Difficulty must increase from Section A to Section E.
+1. Distribute all ${req.body.number || 20} questions across the sections based on the question types allowed: ${(qtypes || []).join(', ')}.
+2. Difficulty must increase from Section A to the last section.
 3. All questions must match the class level — ${req.body.class || 'Primary'}.
-4. Use Cameroon-relevant context (local names, places, currency) where appropriate.
-5. Write clear instructions at the start of each section.
+4. Use Cameroon-relevant context (local names, places, currency, animals) where appropriate.
+5. Write clear pupil instructions at the start of each section.
 6. Make the exam clean and ready to print.
 
 ---
@@ -389,9 +468,10 @@ EXAM FORMAT INSTRUCTIONS — Follow every rule below exactly:
 **At the end, include a complete MARKING SCHEME / ANSWER KEY for the teacher:**
 
 ## MARKING SCHEME (For Teacher Use Only)
-- List every correct answer by section and question number
-- Include model answers for short answer and essay questions
-- Include the marks allocation for each question`;
+- List every correct answer by section and question number.
+- Include model answers for short answer and essay questions.
+- Include answers for the Matching and Word Bank sections if present.
+- Include the marks allocation for each question.`;
 
         const response = await client.messages.create({
             model,
@@ -404,8 +484,10 @@ EXAM FORMAT INSTRUCTIONS — Follow every rule below exactly:
     } catch (error) {
         console.error('Exam Error:', error);
         if (error.status === 429 || error.status === 403) {
-            console.log('Mocking Exam response due to rate limit.');
-            const mockMarkdown = `# Term Examination: ${req.body.subject || 'Subject'}\n\n**Total Questions:** ${req.body.number || 10}\n\n## SECTION A: Multiple Choice\n1. What is the core concept?\n   A) Option 1\n   B) Option 2\n\n*API Key Quota Exceeded. This is dynamically mocked data.*`;
+            const isNurseryMock = (req.body.class || '').toLowerCase().includes('nursery');
+            const mockMarkdown = isNurseryMock
+                ? `# Nursery Activity Sheet: ${req.body.subject || 'Subject'} — ${req.body.class || 'Nursery'}\n\n## ACTIVITY 1: Trace and Colour\nTrace the letter **A**. Colour the apple **RED**.\n\n## ACTIVITY 2: Match the Pictures\nDraw a line to match the animal to its name.\n\n*API Key Quota Exceeded. This is dynamically mocked data.*`
+                : `# Term Examination: ${req.body.subject || 'Subject'}\n\n**Total Questions:** ${req.body.number || 10}\n\n## SECTION A: Multiple Choice\n1. What is the core concept?\n   A) Option 1\n   B) Option 2\n\n*API Key Quota Exceeded. This is dynamically mocked data.*`;
             return res.json({ result: mockMarkdown });
         }
         res.status(500).json({ error: 'Failed to generate exam.' });
@@ -493,6 +575,56 @@ Write a professional, encouraging paragraph describing the student's progress, h
             return res.json({ result: mockMarkdown });
         }
         res.status(500).json({ error: 'Failed to generate report card comment.' });
+    }
+});
+
+// Diagram Generator endpoint (returns Mermaid.js syntax)
+app.post('/api/generate/diagram', async (req, res) => {
+    try {
+        const { topic, dtype, class: className, subject, custom } = req.body;
+
+        const userPrompt = `Generate a Mermaid.js diagram for the following educational request.
+
+Topic: ${topic}
+Diagram Type: ${dtype}
+Class Level: ${className || 'Primary'}
+Subject: ${subject || 'General'}
+Additional Instructions: ${custom || 'None'}
+
+STRICT RULES:
+1. Return ONLY the raw Mermaid.js syntax — no explanations, no markdown fences, no extra text.
+2. Start directly with the Mermaid keyword (e.g., graph TD, mindmap, timeline, flowchart LR, pie, etc.).
+3. Make the diagram educational, accurate, and appropriate for the class level.
+4. Keep it simple enough for a school classroom.
+5. Use Cameroon-relevant context where applicable (local animals, plants, geography).
+
+Supported diagram types and when to use them:
+- mindmap → for topic summaries, concept maps
+- flowchart TD → for processes, steps, how things work
+- timeline → for historical events, sequences of events
+- pie → for data, fractions, percentages
+- graph TD → for cause and effect, relationships between concepts
+- sequenceDiagram → for interactions, conversations, step-by-step processes`;
+
+        const response = await client.messages.create({
+            model,
+            max_tokens: 2048,
+            system: systemPrompt,
+            messages: [{ role: 'user', content: userPrompt }]
+        });
+
+        let mermaidCode = response.content[0].text.trim();
+        // Strip markdown fences if model wrapped it anyway
+        mermaidCode = mermaidCode.replace(/^```(?:mermaid)?\n?/i, '').replace(/\n?```$/i, '').trim();
+
+        res.json({ result: mermaidCode });
+    } catch (error) {
+        console.error('Diagram Generator Error:', error);
+        if (error.status === 429 || error.status === 403) {
+            const mock = `mindmap\n  root((${req.body.topic || 'Topic'}))\n    Concept A\n      Detail 1\n      Detail 2\n    Concept B\n      Detail 3\n    Concept C`;
+            return res.json({ result: mock });
+        }
+        res.status(500).json({ error: 'Failed to generate diagram.' });
     }
 });
 

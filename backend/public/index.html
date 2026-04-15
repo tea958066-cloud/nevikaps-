@@ -11,6 +11,8 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <!-- PDF Exporting -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- Mermaid.js for diagram rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 </head>
 
 <body>
@@ -86,6 +88,9 @@
                 <h3 class="nav-heading">AI Studio</h3>
                 <a href="#" class="nav-item" data-target="image-generator">
                     <i class="ph ph-image"></i> Image Generator
+                </a>
+                <a href="#" class="nav-item" data-target="diagram-generator">
+                    <i class="ph ph-graph"></i> Diagram Generator
                 </a>
                 <a href="#" class="nav-item" data-target="ai-assistant">
                     <i class="ph ph-robot"></i> AI Assistant
@@ -243,11 +248,22 @@
                                         <label for="lesson-subject">Subject</label>
                                         <select id="lesson-subject" required>
                                             <option value="">Select Subject</option>
-                                            <option value="Mathematics">Mathematics</option>
-                                            <option value="English Language">English Language</option>
-                                            <option value="Science and Technology">Science and Technology</option>
-                                            <option value="Civic Education">Civic Education</option>
-                                            <option value="ICT">ICT</option>
+                                            <optgroup label="— Nursery Subjects —">
+                                                <option value="Numeracy">Numeracy (Numbers)</option>
+                                                <option value="Literacy">Literacy (Alphabet &amp; Phonics)</option>
+                                                <option value="Oral Language">Oral Language</option>
+                                                <option value="Environmental Studies">Environmental Studies</option>
+                                                <option value="Art and Craft">Art &amp; Craft</option>
+                                                <option value="Music and Rhymes">Music &amp; Rhymes</option>
+                                            </optgroup>
+                                            <optgroup label="— Primary Subjects —">
+                                                <option value="Mathematics">Mathematics</option>
+                                                <option value="English Language">English Language</option>
+                                                <option value="Science and Technology">Science and Technology</option>
+                                                <option value="Civic Education">Civic Education</option>
+                                                <option value="ICT">ICT</option>
+                                                <option value="French Language">French Language</option>
+                                            </optgroup>
                                         </select>
                                     </div>
                                     <div class="input-group">
@@ -328,18 +344,40 @@
                                         <label for="exam-subject">Subject</label>
                                         <select id="exam-subject" required>
                                             <option value="">Select Subject</option>
-                                            <option value="Mathematics">Mathematics</option>
-                                            <option value="English Language">English Language</option>
-                                            <option value="Science and Technology">Science</option>
+                                            <optgroup label="— Nursery Subjects —">
+                                                <option value="Numeracy">Numeracy (Numbers)</option>
+                                                <option value="Literacy">Literacy (Alphabet &amp; Phonics)</option>
+                                                <option value="Oral Language">Oral Language</option>
+                                                <option value="Environmental Studies">Environmental Studies</option>
+                                                <option value="Art and Craft">Art &amp; Craft</option>
+                                                <option value="Music and Rhymes">Music &amp; Rhymes</option>
+                                            </optgroup>
+                                            <optgroup label="— Primary Subjects —">
+                                                <option value="Mathematics">Mathematics</option>
+                                                <option value="English Language">English Language</option>
+                                                <option value="Science and Technology">Science and Technology</option>
+                                                <option value="Civic Education">Civic Education</option>
+                                                <option value="ICT">ICT</option>
+                                                <option value="French Language">French Language</option>
+                                            </optgroup>
                                         </select>
                                     </div>
                                     <div class="input-group">
                                         <label for="exam-class">Class</label>
                                         <select id="exam-class" required>
                                             <option value="">Select Class</option>
-                                            <option value="Primary 4">Primary 4</option>
-                                            <option value="Primary 5">Primary 5</option>
-                                            <option value="Primary 6">Primary 6</option>
+                                            <optgroup label="— Nursery —">
+                                                <option value="Nursery 1">Nursery 1</option>
+                                                <option value="Nursery 2">Nursery 2</option>
+                                            </optgroup>
+                                            <optgroup label="— Primary —">
+                                                <option value="Primary 1">Primary 1</option>
+                                                <option value="Primary 2">Primary 2</option>
+                                                <option value="Primary 3">Primary 3</option>
+                                                <option value="Primary 4">Primary 4</option>
+                                                <option value="Primary 5">Primary 5</option>
+                                                <option value="Primary 6">Primary 6</option>
+                                            </optgroup>
                                         </select>
                                     </div>
                                     <div class="input-group full-width">
@@ -366,6 +404,19 @@
                                                     value="Problem Solving" checked> Problem Solving</label>
                                             <label class="checkbox-label"><input type="checkbox" name="qtype"
                                                     value="Essay"> Essay</label>
+                                            <label class="checkbox-label"><input type="checkbox" name="qtype"
+                                                    value="Match the Correct Answer" checked> Match the Correct Answer</label>
+                                            <label class="checkbox-label"><input type="checkbox" name="qtype"
+                                                    value="Word Bank" checked> Word Bank</label>
+                                        </div>
+                                    </div>
+                                    <div class="input-group full-width">
+                                        <label>Enhancements</label>
+                                        <div class="checkbox-grid">
+                                            <label class="checkbox-label"><input type="checkbox" name="enhancement"
+                                                    value="Include Stimulus" checked> Stimulus Passages (reading / data before MCQ)</label>
+                                            <label class="checkbox-label"><input type="checkbox" name="enhancement"
+                                                    value="Include Diagrams"> Diagrams &amp; Illustrations in Questions</label>
                                         </div>
                                     </div>
                                     <div class="input-group full-width">
@@ -406,11 +457,22 @@
                                         <label for="worksheet-subject">Subject</label>
                                         <select id="worksheet-subject" required>
                                             <option value="">Select Subject</option>
-                                            <option value="Mathematics">Mathematics</option>
-                                            <option value="English Language">English Language</option>
-                                            <option value="Science and Technology">Science and Technology</option>
-                                            <option value="Civic Education">Civic Education</option>
-                                            <option value="ICT">ICT</option>
+                                            <optgroup label="— Nursery Subjects —">
+                                                <option value="Numeracy">Numeracy (Numbers)</option>
+                                                <option value="Literacy">Literacy (Alphabet &amp; Phonics)</option>
+                                                <option value="Oral Language">Oral Language</option>
+                                                <option value="Environmental Studies">Environmental Studies</option>
+                                                <option value="Art and Craft">Art &amp; Craft</option>
+                                                <option value="Music and Rhymes">Music &amp; Rhymes</option>
+                                            </optgroup>
+                                            <optgroup label="— Primary Subjects —">
+                                                <option value="Mathematics">Mathematics</option>
+                                                <option value="English Language">English Language</option>
+                                                <option value="Science and Technology">Science and Technology</option>
+                                                <option value="Civic Education">Civic Education</option>
+                                                <option value="ICT">ICT</option>
+                                                <option value="French Language">French Language</option>
+                                            </optgroup>
                                         </select>
                                     </div>
                                     <div class="input-group">
@@ -564,6 +626,87 @@
                                 <div class="pulse-icon"><i class="ph ph-image"></i></div>
                                 <h3>Pollinations AI Studio</h3>
                                 <p>Type a prompt above and instantly generate visual assets for your classes.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Diagram Generator Section -->
+                <div id="diagram-generator" class="content-section">
+                    <div class="form-layout">
+                        <div class="form-panel glass-panel">
+                            <h3>Diagram Details</h3>
+                            <form id="diagram-form">
+                                <div class="form-grid">
+                                    <div class="input-group full-width">
+                                        <label for="diagram-topic">Topic / Concept</label>
+                                        <input type="text" id="diagram-topic" placeholder="e.g., The Water Cycle, Life Cycle of a Frog, Food Chain" required>
+                                    </div>
+                                    <div class="input-group">
+                                        <label for="diagram-type">Diagram Type</label>
+                                        <select id="diagram-type" required>
+                                            <option value="mindmap">Mind Map</option>
+                                            <option value="flowchart TD">Flowchart (Top → Down)</option>
+                                            <option value="flowchart LR">Flowchart (Left → Right)</option>
+                                            <option value="timeline">Timeline</option>
+                                            <option value="pie">Pie Chart</option>
+                                            <option value="graph TD">Concept Map</option>
+                                            <option value="sequenceDiagram">Sequence / Step Diagram</option>
+                                        </select>
+                                    </div>
+                                    <div class="input-group">
+                                        <label for="diagram-subject">Subject</label>
+                                        <select id="diagram-subject">
+                                            <option value="">Any Subject</option>
+                                            <optgroup label="— Nursery —">
+                                                <option value="Numeracy">Numeracy</option>
+                                                <option value="Literacy">Literacy</option>
+                                                <option value="Environmental Studies">Environmental Studies</option>
+                                            </optgroup>
+                                            <optgroup label="— Primary —">
+                                                <option value="Mathematics">Mathematics</option>
+                                                <option value="English Language">English Language</option>
+                                                <option value="Science and Technology">Science and Technology</option>
+                                                <option value="Civic Education">Civic Education</option>
+                                                <option value="ICT">ICT</option>
+                                            </optgroup>
+                                        </select>
+                                    </div>
+                                    <div class="input-group">
+                                        <label for="diagram-class">Class Level</label>
+                                        <select id="diagram-class">
+                                            <option value="">Any Level</option>
+                                            <option value="Nursery 1">Nursery 1</option>
+                                            <option value="Nursery 2">Nursery 2</option>
+                                            <option value="Primary 1">Primary 1</option>
+                                            <option value="Primary 2">Primary 2</option>
+                                            <option value="Primary 3">Primary 3</option>
+                                            <option value="Primary 4">Primary 4</option>
+                                            <option value="Primary 5">Primary 5</option>
+                                            <option value="Primary 6">Primary 6</option>
+                                        </select>
+                                    </div>
+                                    <div class="input-group full-width">
+                                        <label for="diagram-custom">Extra Instructions (optional)</label>
+                                        <textarea id="diagram-custom" rows="2"
+                                            placeholder="e.g., Include the 4 stages only, use local Cameroon examples"
+                                            style="width: 100%; padding: 0.85rem; border-radius: var(--border-radius-sm); border: 1px solid var(--clr-border); background: rgba(0,0,0,0.02); resize: vertical; font-family: 'Times New Roman', Times, serif; color: var(--clr-text);"></textarea>
+                                    </div>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="submit" class="btn btn-primary" id="btn-generate-diagram"
+                                        style="background: linear-gradient(135deg, #7c3aed, #6d28d9); box-shadow: 0 4px 15px rgba(124,58,237,0.4);">
+                                        <i class="ph ph-graph"></i> Generate Diagram
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="preview-panel glass-panel" id="diagram-preview" style="overflow: auto;">
+                            <div class="empty-state">
+                                <div class="pulse-icon"><i class="ph ph-graph"></i></div>
+                                <h3>Diagram Studio</h3>
+                                <p>Generate mind maps, flowcharts, timelines, pie charts and concept maps — ready to download as SVG or PDF.</p>
                             </div>
                         </div>
                     </div>

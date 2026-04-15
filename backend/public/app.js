@@ -3,6 +3,11 @@
  * Vanilla JavaScript implementation logic focusing on Prompt Architecture integration.
  */
 
+// Initialize Mermaid.js for diagram rendering
+if (typeof mermaid !== 'undefined') {
+    mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'loose' });
+}
+
 // State Management
 const State = {
     isAuthenticated: false,
@@ -141,6 +146,22 @@ const NexicapsAI = {
         }
     },
 
+    async generateDiagram(input) {
+        try {
+            const response = await fetch('/api/generate/diagram', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(input)
+            });
+            if (!response.ok) throw new Error('Network response was not ok');
+            const data = await response.json();
+            return data.result;
+        } catch (error) {
+            console.error('Diagram API Error:', error);
+            return null;
+        }
+    },
+
     async generateChat(messages) {
         try {
             const response = await fetch('/api/generate/chat', {
@@ -254,20 +275,32 @@ document.addEventListener('DOMContentLoaded', () => {
         displayResult('lesson-preview', finalMarkdown, 'Lesson Plan');
     });
 
+    // Update exam button label when nursery class is selected
+    document.getElementById('exam-class').addEventListener('change', function () {
+        const btn = document.getElementById('btn-generate-exam');
+        const isNursery = this.value.toLowerCase().includes('nursery');
+        btn.innerHTML = isNursery
+            ? '<i class="ph ph-paint-brush"></i> Generate Activity Sheet'
+            : '<i class="ph ph-brain"></i> Generate Bloom\'s Exam';
+    });
+
     // Exam Generation Flow
     const examForm = document.getElementById('exam-form');
     examForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        const checkedTypes = Array.from(document.querySelectorAll('input[name="qtype"]:checked')).map(cb => cb.value);
+        const checkedTypes       = Array.from(document.querySelectorAll('input[name="qtype"]:checked')).map(cb => cb.value);
+        const checkedEnhancements = Array.from(document.querySelectorAll('input[name="enhancement"]:checked')).map(cb => cb.value);
+        const hasDiagramsEnabled = checkedEnhancements.includes('Include Diagrams');
 
         const input = {
-            subject: document.getElementById('exam-subject').value,
-            class: document.getElementById('exam-class').value,
-            topic: document.getElementById('exam-topic').value,
-            number: document.getElementById('exam-number').value,
-            qtypes: checkedTypes,
-            custom: document.getElementById('exam-custom').value
+            subject:      document.getElementById('exam-subject').value,
+            class:        document.getElementById('exam-class').value,
+            topic:        document.getElementById('exam-topic').value,
+            number:       document.getElementById('exam-number').value,
+            qtypes:       checkedTypes,
+            enhancements: checkedEnhancements,
+            custom:       document.getElementById('exam-custom').value
         };
 
         if (checkedTypes.length === 0) {
@@ -276,7 +309,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         await simulateAILoading('exam');
-        const markdownOutput = await NexicapsAI.generateExam(input);
+        let markdownOutput = await NexicapsAI.generateExam(input);
+
+        // Replace [DIAGRAM: description] markers with real generated images
+        if (hasDiagramsEnabled && markdownOutput) {
+            markdownOutput = await injectDiagramImages(markdownOutput);
+        }
 
         const imagePrompt = `Cameroon Primary School ${input.class} ${input.subject} exam test on ${input.topic} illustration clean flat vector layout style educational`;
         const imageUrl = await NexicapsAI.generateImage(imagePrompt);
@@ -449,6 +487,57 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Diagram Generator Flow
+    const diagramForm = document.getElementById('diagram-form');
+    if (diagramForm) {
+        diagramForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const input = {
+                topic:   document.getElementById('diagram-topic').value,
+                dtype:   document.getElementById('diagram-type').value,
+                subject: document.getElementById('diagram-subject').value,
+                class:   document.getElementById('diagram-class').value,
+                custom:  document.getElementById('diagram-custom').value
+            };
+
+            const preview = document.getElementById('diagram-preview');
+            preview.innerHTML = '<div class="loader-spinner" style="margin: 3rem auto;"></div><p style="text-align:center; color: var(--clr-text-muted);">Generating diagram...</p>';
+
+            const mermaidCode = await NexicapsAI.generateDiagram(input);
+
+            if (!mermaidCode) {
+                preview.innerHTML = '<p style="color:var(--clr-accent); padding:2rem;">Failed to generate diagram. Please try again.</p>';
+                return;
+            }
+
+            // Render with Mermaid.js
+            const diagramId = 'mermaid-svg-' + Date.now();
+            preview.innerHTML = `
+                <div id="${diagramId}" style="background: white; padding: 2rem; border-radius: var(--border-radius-sm); min-height: 200px; overflow: auto;"></div>
+                <div style="margin-top: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap; padding-top: 1rem; border-top: 1px solid var(--clr-border);">
+                    <button class="btn btn-primary" onclick="downloadDiagramSVG('${diagramId}', '${input.topic}')"><i class="ph ph-download-simple"></i> Download SVG</button>
+                    <button class="btn btn-primary" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); box-shadow: 0 4px 15px rgba(37,99,235,0.4);" onclick="downloadDiagramPDF('${diagramId}', '${input.topic}')"><i class="ph ph-file-pdf"></i> Download PDF</button>
+                    <button class="btn btn-secondary glass-btn" onclick="showMermaidCode('${diagramId}')"><i class="ph ph-code"></i> View Code</button>
+                </div>`;
+
+            try {
+                const { svg } = await mermaid.render(diagramId + '-render', mermaidCode);
+                document.getElementById(diagramId).innerHTML = svg;
+                // Store raw code for later
+                document.getElementById(diagramId).dataset.mermaid = mermaidCode;
+            } catch (err) {
+                console.error('Mermaid render error:', err);
+                document.getElementById(diagramId).innerHTML = `<pre style="white-space:pre-wrap; font-size:0.85rem; color: var(--clr-text);">${mermaidCode}</pre><p style="color:var(--clr-text-muted); margin-top:1rem; font-size:0.85rem;">⚠ Could not render as diagram. The raw code is shown above.</p>`;
+            }
+
+            DB.saveGeneration(State.currentUser, {
+                type: 'Diagram', title: input.topic, content: '```mermaid\n' + mermaidCode + '\n```', meta: `${input.dtype} | ${input.subject || 'General'}`
+            });
+            window.loadHistory();
+        });
+    }
+
     // AI Assistant Chat Flow
     const chatForm = document.getElementById('chat-form');
     let chatHistoryState = [];
@@ -507,6 +596,7 @@ window.navigateTo = function (sectionId) {
         'report-card-generator': 'Report Cards',
         'syllabus-ingestion': 'Syllabus Parser',
         'image-generator': 'Image Generation Studio',
+        'diagram-generator': 'Diagram Generator',
         'ai-assistant': 'NEVIKAPS AI Assistant'
     };
     document.getElementById('page-title').innerText = titleMap[sectionId] || 'NEVIKAPS';
@@ -642,6 +732,84 @@ window.downloadWord = function (elementId, filename) {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+};
+
+/**
+ * Finds every [DIAGRAM: description] marker in a markdown string,
+ * calls Pollinations AI for each, and replaces the marker with a real image.
+ */
+async function injectDiagramImages(markdown) {
+    const markerRegex = /\[DIAGRAM:\s*([^\]]+)\]/gi;
+    const matches = [...markdown.matchAll(markerRegex)];
+    if (!matches.length) return markdown;
+
+    let result = markdown;
+    for (const match of matches) {
+        const fullMarker  = match[0];
+        const description = match[1].trim();
+        const prompt = `educational school diagram illustration: ${description}, clean labelled vector style, white background, black ink, suitable for primary school textbook`;
+        const url = await NexicapsAI.generateImage(prompt);
+        const replacement = url
+            ? `\n![${description}](${url})\n*Fig: ${description}*\n`
+            : `\n> *(Diagram: ${description})*\n`;
+        result = result.replace(fullMarker, replacement);
+    }
+    return result;
+}
+
+window.downloadDiagramSVG = function (containerId, title) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const svgEl = container.querySelector('svg');
+    if (!svgEl) return;
+
+    const serializer = new XMLSerializer();
+    const svgString = serializer.serializeToString(svgEl);
+    const blob = new Blob([svgString], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'NEVIKAPS_Diagram_' + (title || 'diagram').replace(/\s+/g, '_') + '.svg';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+};
+
+window.downloadDiagramPDF = function (containerId, title) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const opt = {
+        margin: 0.5,
+        filename: 'NEVIKAPS_Diagram_' + (title || 'diagram').replace(/\s+/g, '_') + '.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, backgroundColor: '#ffffff' },
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' }
+    };
+    html2pdf().set(opt).from(container).save();
+};
+
+window.showMermaidCode = function (containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const code = container.dataset.mermaid || '';
+    const modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:2rem;';
+    modal.innerHTML = `
+        <div style="background:var(--clr-surface);border-radius:var(--border-radius);padding:2rem;max-width:700px;width:100%;max-height:80vh;overflow:auto;position:relative;">
+            <h3 style="margin-bottom:1rem;">Mermaid Source Code</h3>
+            <pre style="background:rgba(0,0,0,0.08);padding:1.5rem;border-radius:8px;white-space:pre-wrap;font-size:0.85rem;overflow:auto;">${code}</pre>
+            <div style="margin-top:1.5rem;display:flex;gap:1rem;">
+                <button class="btn btn-secondary glass-btn" onclick="navigator.clipboard.writeText(\`${code.replace(/`/g, '\\`')}\`);this.innerHTML='<i class=\\'ph ph-check\\'></i> Copied!'">
+                    <i class="ph ph-copy"></i> Copy Code
+                </button>
+                <button class="btn btn-secondary glass-btn" onclick="this.closest('div[style]').remove()">
+                    <i class="ph ph-x"></i> Close
+                </button>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
 };
 
 window.loadHistory = function () {
