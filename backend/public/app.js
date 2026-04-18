@@ -146,6 +146,22 @@ const NexicapsAI = {
         }
     },
 
+    async generateMonthlyLesson(input) {
+        try {
+            const response = await fetch('/api/generate/monthly-lesson', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(input)
+            });
+            if (!response.ok) throw new Error('Network response was not ok');
+            const data = await response.json();
+            return data.result;
+        } catch (error) {
+            console.error('API Error:', error);
+            return '# Error\nFailed to connect to the NEVIKAPS AI backend. Please ensure the server is running.';
+        }
+    },
+
     async generateDiagram(input) {
         try {
             const response = await fetch('/api/generate/diagram', {
@@ -487,6 +503,54 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Monthly Lesson Plan Flow
+    const monthlyLessonForm = document.getElementById('monthly-lesson-form');
+    if (monthlyLessonForm) {
+        // Auto-set current month/year
+        const now = new Date();
+        const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        document.getElementById('ml-month').value = months[now.getMonth()];
+        document.getElementById('ml-year').value = now.getFullYear();
+
+        monthlyLessonForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const input = {
+                subject:        document.getElementById('ml-subject').value,
+                class:          document.getElementById('ml-class').value,
+                term:           document.getElementById('ml-term').value,
+                month:          document.getElementById('ml-month').value,
+                year:           document.getElementById('ml-year').value,
+                weeks:          document.getElementById('ml-weeks').value,
+                lessonsPerWeek: document.getElementById('ml-lessons-per-week').value,
+                theme:          document.getElementById('ml-theme').value,
+                topics:         document.getElementById('ml-topics').value,
+                custom:         document.getElementById('ml-custom').value
+            };
+
+            await simulateAILoading('monthly');
+            const markdownOutput = await NexicapsAI.generateMonthlyLesson(input);
+
+            const imagePrompt = `Cameroon school ${input.class} ${input.subject} monthly lesson plan calendar clean flat vector educational illustration`;
+            const imageUrl = await NexicapsAI.generateImage(imagePrompt);
+
+            let finalMarkdown = markdownOutput;
+            if (imageUrl) {
+                finalMarkdown = `![Monthly Plan](${imageUrl})\n\n` + finalMarkdown;
+            }
+
+            DB.saveGeneration(State.currentUser, {
+                type: 'Monthly Plan',
+                title: `${input.month} ${input.year} — ${input.subject}`,
+                content: finalMarkdown,
+                meta: `${input.class} | ${input.term}`
+            });
+            window.loadHistory();
+
+            displayResult('monthly-lesson-preview', finalMarkdown, 'Monthly_Lesson_Plan');
+        });
+    }
+
     // Diagram Generator Flow
     const diagramForm = document.getElementById('diagram-form');
     if (diagramForm) {
@@ -591,6 +655,7 @@ window.navigateTo = function (sectionId) {
         'dashboard-content': 'Welcome back, Educator',
         'history-view': 'History & Saved Documents',
         'lesson-planner': 'Lesson Planner',
+        'monthly-lesson-planner': 'Monthly Lesson Planner',
         'exam-generator': 'Exam Generator',
         'worksheet-generator': 'Class Worksheets',
         'report-card-generator': 'Report Cards',
@@ -617,6 +682,8 @@ async function simulateAILoading(type) {
         loadingText.innerText = "Generating personalized and professional feedback...";
     } else if (type === 'syllabus') {
         loadingText.innerText = "Extracting curriculum structure and themes from PDF...";
+    } else if (type === 'monthly') {
+        loadingText.innerText = "Building your full monthly lesson schedule week by week...";
     }
 
     overlay.classList.remove('hidden');

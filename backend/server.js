@@ -578,6 +578,144 @@ Write a professional, encouraging paragraph describing the student's progress, h
     }
 });
 
+// Monthly Lesson Plan endpoint
+app.post('/api/generate/monthly-lesson', async (req, res) => {
+    try {
+        const {
+            subject, class: className, term, month, year,
+            weeks, lessonsPerWeek, theme, topics, custom
+        } = req.body;
+
+        const structuredInput = JSON.stringify({
+            subject, class: className, term, month, year,
+            numberOfWeeks: weeks,
+            lessonsPerWeek,
+            mainTheme: theme,
+            topicsTocover: topics,
+            customInstructions: custom || 'None'
+        }, null, 2);
+
+        const userPrompt = `Create a complete, print-ready MONTHLY LESSON PLAN for an entire school month.
+
+Teacher Input:
+\`\`\`json
+${structuredInput}
+\`\`\`
+
+Follow the Cameroon Competency Based Approach (CBA). Do NOT skip any section.
+
+---
+
+## MONTHLY LESSON PLAN — ${month} ${year}
+
+### IDENTIFICATION
+
+| Field | Details |
+|-------|---------|
+| School | _______________________ |
+| Teacher | _______________________ |
+| Subject | ${subject || ''} |
+| Class / Grade | ${className || ''} |
+| Term | ${term || ''} |
+| Month | ${month || ''} ${year || ''} |
+| Main Theme / Strand | ${theme || ''} |
+
+---
+
+### MONTHLY OVERVIEW
+
+Write a 3–4 sentence summary of what pupils will learn this month, the competencies to be developed, and why this month's content matters.
+
+---
+
+### MONTHLY OBJECTIVES
+
+By the end of the month, pupils should be able to:
+(Write 5–6 measurable objectives using action verbs appropriate for ${className || 'the class'} level.)
+
+---
+
+### WEEK-BY-WEEK BREAKDOWN
+
+For EACH of the ${weeks || 4} weeks, produce a full section in this format:
+
+---
+
+#### WEEK [N] — Dates: _____________ to _____________
+
+**Weekly Focus / Sub-theme:** (state the sub-theme for this week)
+
+**Weekly Objective:** Learners will be able to [skill] correctly by end of week.
+
+**Lesson Schedule:**
+
+| Day | Lesson No. | Topic | Sub-topic | Objectives | Teaching Method | Materials |
+|-----|-----------|-------|-----------|------------|----------------|-----------|
+| Monday | | | | | | |
+| Tuesday | | | | | | |
+| Wednesday | | | | | | |
+| Thursday | | | | | | |
+| Friday | | | | | | |
+
+Fill EVERY cell. Use ${lessonsPerWeek || 5} lessons per week. Spread topics logically across days.
+
+**End-of-Week Assessment:** Describe in 2 sentences how the teacher checks understanding at end of week (e.g., oral questions, short quiz, class activity).
+
+**Homework for the Week:** Write 2 homework tasks appropriate for ${className || 'the class'}.
+
+---
+
+(Repeat the above block for all ${weeks || 4} weeks, using different topics each week as listed in the topics input.)
+
+---
+
+### MONTHLY ASSESSMENT PLAN
+
+| Assessment Type | Week | Description | Marks |
+|----------------|------|-------------|-------|
+| Classwork | Weekly | Daily exercises and participation | /10 |
+| Weekly Quiz | End of each week | Short written or oral quiz | /20 |
+| Mid-Month Test | Week 2 | Written test covering weeks 1–2 | /30 |
+| End-of-Month Evaluation | Week ${weeks || 4} | Full month evaluation | /40 |
+
+---
+
+### TEACHING RESOURCES NEEDED THIS MONTH
+
+List at least 8 resources the teacher will use across the month (textbooks, charts, real objects, ICT tools, etc.).
+
+---
+
+### TEACHER'S MONTHLY REFLECTION (to fill after the month)
+
+| Reflection Point | Notes |
+|-----------------|-------|
+| Topics completed on schedule? | |
+| Topics not completed — reason? | |
+| Pupils who excelled | |
+| Pupils needing extra support | |
+| What to improve next month | |
+
+${custom ? `\n---\n\n**Additional Teacher Instructions:** ${custom}` : ''}`;
+
+        const response = await client.messages.create({
+            model,
+            max_tokens: 8192,
+            system: systemPrompt,
+            messages: [{ role: 'user', content: userPrompt }]
+        });
+
+        res.json({ result: response.content[0].text });
+    } catch (error) {
+        console.error('Monthly Lesson Plan Error:', error);
+        if (error.status === 429 || error.status === 403) {
+            const mock = `# Monthly Lesson Plan: ${req.body.subject || 'Subject'} — ${req.body.month || 'Month'} ${req.body.year || ''}\n\n## Week 1\n| Day | Topic |\n|-----|-------|\n| Monday | Introduction |\n\n*API Key Quota Exceeded. This is mocked data.*`;
+            return res.json({ result: mock });
+        }
+        res.status(500).json({ error: 'Failed to generate monthly lesson plan.' });
+    }
+});
+
 // Diagram Generator endpoint (returns Mermaid.js syntax)
 app.post('/api/generate/diagram', async (req, res) => {
     try {

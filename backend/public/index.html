@@ -78,6 +78,9 @@
                 <a href="#" class="nav-item" data-target="lesson-planner">
                     <i class="ph ph-book-open"></i> Lesson Planner
                 </a>
+                <a href="#" class="nav-item" data-target="monthly-lesson-planner">
+                    <i class="ph ph-calendar-dots"></i> Monthly Planner
+                </a>
                 <a href="#" class="nav-item" data-target="exam-generator">
                     <i class="ph ph-file-text"></i> Exam Generator
                 </a>
@@ -329,6 +332,131 @@
                                 <p>Fill the form to generate a CBA compliant lesson plan using NEVIKAPS AI.</p>
                             </div>
                             <!-- Result will display here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Monthly Lesson Planner Section -->
+                <div id="monthly-lesson-planner" class="content-section">
+                    <div class="form-layout">
+                        <div class="form-panel glass-panel">
+                            <h3>Monthly Plan Details</h3>
+                            <form id="monthly-lesson-form">
+                                <div class="form-grid">
+                                    <div class="input-group">
+                                        <label for="ml-subject">Subject</label>
+                                        <select id="ml-subject" required>
+                                            <option value="">Select Subject</option>
+                                            <optgroup label="— Nursery Subjects —">
+                                                <option value="Numeracy">Numeracy (Numbers)</option>
+                                                <option value="Literacy">Literacy (Alphabet &amp; Phonics)</option>
+                                                <option value="Oral Language">Oral Language</option>
+                                                <option value="Environmental Studies">Environmental Studies</option>
+                                                <option value="Art and Craft">Art &amp; Craft</option>
+                                                <option value="Music and Rhymes">Music &amp; Rhymes</option>
+                                            </optgroup>
+                                            <optgroup label="— Primary Subjects —">
+                                                <option value="Mathematics">Mathematics</option>
+                                                <option value="English Language">English Language</option>
+                                                <option value="Science and Technology">Science and Technology</option>
+                                                <option value="Civic Education">Civic Education</option>
+                                                <option value="ICT">ICT</option>
+                                                <option value="French Language">French Language</option>
+                                            </optgroup>
+                                        </select>
+                                    </div>
+                                    <div class="input-group">
+                                        <label for="ml-class">Class / Grade</label>
+                                        <select id="ml-class" required>
+                                            <option value="">Select Class</option>
+                                            <option value="Nursery 1">Nursery 1</option>
+                                            <option value="Nursery 2">Nursery 2</option>
+                                            <option value="Primary 1">Primary 1</option>
+                                            <option value="Primary 2">Primary 2</option>
+                                            <option value="Primary 3">Primary 3</option>
+                                            <option value="Primary 4">Primary 4</option>
+                                            <option value="Primary 5">Primary 5</option>
+                                            <option value="Primary 6">Primary 6</option>
+                                        </select>
+                                    </div>
+                                    <div class="input-group">
+                                        <label for="ml-term">School Term</label>
+                                        <select id="ml-term" required>
+                                            <option value="First Term">First Term</option>
+                                            <option value="Second Term">Second Term</option>
+                                            <option value="Third Term">Third Term</option>
+                                        </select>
+                                    </div>
+                                    <div class="input-group">
+                                        <label for="ml-month">Month</label>
+                                        <select id="ml-month" required>
+                                            <option value="January">January</option>
+                                            <option value="February">February</option>
+                                            <option value="March">March</option>
+                                            <option value="April">April</option>
+                                            <option value="May">May</option>
+                                            <option value="June">June</option>
+                                            <option value="July">July</option>
+                                            <option value="August">August</option>
+                                            <option value="September">September</option>
+                                            <option value="October">October</option>
+                                            <option value="November">November</option>
+                                            <option value="December">December</option>
+                                        </select>
+                                    </div>
+                                    <div class="input-group">
+                                        <label for="ml-year">Year</label>
+                                        <input type="number" id="ml-year" min="2024" max="2035" value="2025" required>
+                                    </div>
+                                    <div class="input-group">
+                                        <label for="ml-weeks">Number of Weeks</label>
+                                        <select id="ml-weeks" required>
+                                            <option value="3">3 weeks</option>
+                                            <option value="4" selected>4 weeks</option>
+                                            <option value="5">5 weeks</option>
+                                        </select>
+                                    </div>
+                                    <div class="input-group">
+                                        <label for="ml-lessons-per-week">Lessons Per Week</label>
+                                        <select id="ml-lessons-per-week" required>
+                                            <option value="3">3 lessons</option>
+                                            <option value="4">4 lessons</option>
+                                            <option value="5" selected>5 lessons</option>
+                                            <option value="6">6 lessons</option>
+                                        </select>
+                                    </div>
+                                    <div class="input-group full-width">
+                                        <label for="ml-theme">Main Theme / Strand for the Month</label>
+                                        <input type="text" id="ml-theme" placeholder="e.g., Numbers and Operations, Living Things, Sentence Construction" required>
+                                    </div>
+                                    <div class="input-group full-width">
+                                        <label for="ml-topics">Topics to Cover (one per line or comma-separated)</label>
+                                        <textarea id="ml-topics" rows="4"
+                                            placeholder="e.g.,&#10;Week 1: Addition of fractions&#10;Week 2: Subtraction of fractions&#10;Week 3: Multiplication of fractions&#10;Week 4: Revision and assessment"
+                                            style="width:100%; padding:0.85rem; border-radius:var(--border-radius-sm); border:1px solid var(--clr-border); background:rgba(0,0,0,0.02); resize:vertical; font-family:'Times New Roman',Times,serif; color:var(--clr-text);" required></textarea>
+                                    </div>
+                                    <div class="input-group full-width">
+                                        <label for="ml-custom">Custom AI Instructions (optional)</label>
+                                        <textarea id="ml-custom" rows="2"
+                                            placeholder="e.g., Include cultural activities, align with national exam syllabus, add ICT integration suggestions"
+                                            style="width:100%; padding:0.85rem; border-radius:var(--border-radius-sm); border:1px solid var(--clr-border); background:rgba(0,0,0,0.02); resize:vertical; font-family:'Times New Roman',Times,serif; color:var(--clr-text);"></textarea>
+                                    </div>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="submit" class="btn btn-primary" id="btn-generate-monthly"
+                                        style="background: linear-gradient(135deg, #7c3aed, #4f46e5); box-shadow: 0 4px 15px rgba(124,58,237,0.4);">
+                                        <i class="ph ph-calendar-dots"></i> Generate Monthly Plan
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="preview-panel glass-panel" id="monthly-lesson-preview">
+                            <div class="empty-state">
+                                <div class="pulse-icon"><i class="ph ph-calendar-dots"></i></div>
+                                <h3>Monthly Lesson Planner</h3>
+                                <p>Generate a complete week-by-week plan for the entire month — including daily lesson schedule, objectives, assessments, and a teacher reflection table.</p>
+                            </div>
                         </div>
                     </div>
                 </div>
