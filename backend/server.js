@@ -425,30 +425,34 @@ EXAM FORMAT INSTRUCTIONS — Follow every rule below exactly:
 
 ---
 
-**SECTIONS — Structure the exam exactly like this:**
+**SECTIONS — Structure the exam exactly like this. IMPORTANT: Section headings must appear EXACTLY as shown below (no Bloom's taxonomy labels in headings — those are for your internal guidance only):**
 
-## SECTION A: Multiple Choice (Bloom's Level: Remember & Understand)
+## SECTION A: Multiple Choice
+[Internal guide — target Bloom's levels: Remember & Understand]
 ${hasStimulus ? '**Read the following carefully, then answer the questions below.**\n> [Insert a 3–5 sentence stimulus passage or data relevant to the topic here]\n' : ''}- Write clear multiple choice questions with 4 options each (A, B, C, D).
 - Instruction to pupils: *Circle the letter of the correct answer.*
 - Each question = 1 mark.
 
-## SECTION B: Fill in the Blanks (Bloom's Level: Remember & Understand)
+## SECTION B: Fill in the Blanks
+[Internal guide — target Bloom's levels: Remember & Understand]
 - Provide sentences with one key word missing.
 - Each blank = 1 mark.
 ${hasDiagrams ? '- Where appropriate, insert a [DIAGRAM: ...] marker so pupils observe and fill in labels or answers.' : ''}
 
-## SECTION C: Short Answer Questions (Bloom's Level: Understand & Apply)
+## SECTION C: Short Answer Questions
+[Internal guide — target Bloom's levels: Understand & Apply]
 - Questions requiring 1–3 sentence answers.
 - Each question = 2 marks.
 ${hasDiagrams ? '- Include at least one question with a [DIAGRAM: ...] marker that pupils must study and describe or label.' : ''}
 
-## SECTION D: Problem Solving / Structured Questions (Bloom's Level: Apply & Analyze)
+## SECTION D: Problem Solving
+[Internal guide — target Bloom's levels: Apply & Analyze]
 - Practical questions requiring working out or observation.
 - Each question = 3–5 marks.
 ${hasDiagrams ? '- Include at least one [DIAGRAM: ...] marker for a chart, figure, or geometry diagram pupils must interpret.' : ''}
 
-## SECTION E: Theory / Essay (Bloom's Level: Evaluate & Create)
-- Only include for Primary 4, 5, 6.
+## SECTION E: Theory / Essay Questions
+[Internal guide — target Bloom's levels: Evaluate & Create — only for Primary 4, 5, 6]
 - Higher order thinking questions.
 - Each question = 5–10 marks.
 ${matchSection}${wordBankSection}
