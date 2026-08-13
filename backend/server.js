@@ -14,9 +14,11 @@ const adminAdminsRoutes = require('./routes/admin-admins');
 const adminCurriculumRoutes = require('./routes/admin-curriculum');
 const adminContentRoutes = require('./routes/admin-content');
 const adminSubjectsRoutes = require('./routes/admin-subjects');
+const adminSubmissionsRoutes = require('./routes/admin-submissions');
 const contentRoutes = require('./routes/content');
 const curriculumRoutes = require('./routes/curriculum');
 const subjectsRoutes = require('./routes/subjects');
+const submissionsRoutes = require('./routes/submissions');
 
 // Setup file upload (use system temp dir so it works locally and on Vercel)
 const upload = multer({ dest: os.tmpdir() });
@@ -34,9 +36,11 @@ app.use('/api/admin/admins', adminAdminsRoutes);
 app.use('/api/admin/curriculum', adminCurriculumRoutes);
 app.use('/api/admin/content', adminContentRoutes);
 app.use('/api/admin/subjects', adminSubjectsRoutes);
+app.use('/api/admin/submissions', adminSubmissionsRoutes);
 app.use('/api/content', requireAuth, contentRoutes);
 app.use('/api/curriculum', requireAuth, curriculumRoutes);
 app.use('/api/subjects', requireAuth, subjectsRoutes);
+app.use('/api/submissions', requireAuth, submissionsRoutes);
 
 // Gate the admin SPA shell itself: only a logged-in admin can load the page.
 // Everyone else is bounced to the teacher login screen.

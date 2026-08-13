@@ -1007,6 +1007,7 @@ input:focus, select:focus {
 
 .pill-success { background: rgba(46, 204, 113, 0.15); color: var(--clr-success-hover); }
 .pill-danger { background: rgba(231, 76, 60, 0.15); color: var(--clr-danger-hover); }
+.pill-warning { background: rgba(230, 162, 60, 0.18); color: #B9770E; }
 
 .data-table {
     width: 100%;

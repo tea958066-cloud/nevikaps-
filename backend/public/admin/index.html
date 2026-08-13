@@ -30,6 +30,9 @@
                 <a href="#" class="nav-item" data-target="admin-curriculum">
                     <i class="ph ph-books"></i> Curriculum
                 </a>
+                <a href="#" class="nav-item" data-target="admin-submissions">
+                    <i class="ph ph-paper-plane-tilt"></i> Submissions
+                </a>
                 <a href="#" class="nav-item" data-target="admin-settings">
                     <i class="ph ph-gear"></i> Settings
                 </a>
@@ -293,6 +296,53 @@
                     </div>
                 </div>
 
+                <!-- Submissions Section (exams + student comments teachers send in for review) -->
+                <div id="admin-submissions" class="content-section">
+                    <div class="glass-panel" style="padding:1.5rem;">
+                        <div class="table-toolbar">
+                            <h3>Submissions</h3>
+                            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                                <select id="submissions-teacher-filter"><option value="">All Teachers</option></select>
+                                <select id="submissions-type-filter">
+                                    <option value="">All Types</option>
+                                    <option value="exam">Exam</option>
+                                    <option value="comment">Student Comment</option>
+                                </select>
+                                <select id="submissions-status-filter">
+                                    <option value="">All Statuses</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="approved">Approved</option>
+                                    <option value="rejected">Rejected</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="submissions-error" class="form-error hidden"></div>
+                        <div style="overflow-x:auto;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Teacher</th>
+                                        <th>Type</th>
+                                        <th>Title</th>
+                                        <th>Class / Subject</th>
+                                        <th>Status</th>
+                                        <th>Date</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="submissions-tbody">
+                                    <tr><td colspan="7" style="text-align:center; color:var(--clr-text-muted); padding:2rem;">Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="pagination">
+                            <span id="submissions-pagination-info"></span>
+                            <button class="btn btn-secondary" id="submissions-prev-page-btn"><i class="ph ph-arrow-left"></i> Prev</button>
+                            <button class="btn btn-secondary" id="submissions-next-page-btn">Next <i class="ph ph-arrow-right"></i></button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Settings Section -->
                 <div id="admin-settings" class="content-section">
                     <div class="settings-grid">
@@ -469,6 +519,17 @@
                     <button type="submit" class="btn btn-primary" id="btn-save-entry">Save Entry</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Submission review modal -->
+    <div id="submission-view-modal" class="overlay hidden">
+        <div class="loading-card glass-panel" style="max-width:800px; max-height:85vh; overflow-y:auto; text-align:left; align-items:stretch;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h3 id="submission-view-modal-title">Submission</h3>
+                <button class="icon-btn" id="submission-view-modal-close"><i class="ph ph-x"></i></button>
+            </div>
+            <div id="submission-view-modal-body"></div>
         </div>
     </div>
 

@@ -227,6 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         window.loadHistory();
         if (typeof window.loadAssignedSubjects === 'function') window.loadAssignedSubjects();
+        if (typeof window.loadSubmissions === 'function') window.loadSubmissions();
     }
 
     loginForm.addEventListener('submit', async (e) => {
@@ -518,6 +519,87 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Submit to Admin Flow — a teacher can submit an exam (for the admin to
+    // download and verify) or a student comment, sharing one form whose
+    // fields relabel based on the selected type.
+    const submissionForm = document.getElementById('submission-form');
+    if (submissionForm) {
+        let submissionType = 'exam';
+        const btnExamType = document.getElementById('btn-submission-type-exam');
+        const btnCommentType = document.getElementById('btn-submission-type-comment');
+        const titleLabel = document.getElementById('submission-title-label');
+        const titleInput = document.getElementById('submission-title');
+        const studentGroup = document.getElementById('submission-student-group');
+        const studentInput = document.getElementById('submission-student');
+        const contentLabel = document.getElementById('submission-content-label');
+        const contentInput = document.getElementById('submission-content');
+
+        function setSubmissionType(type) {
+            submissionType = type;
+            const isExam = type === 'exam';
+
+            btnExamType.className = isExam ? 'btn btn-primary' : 'btn btn-secondary glass-btn';
+            btnCommentType.className = isExam ? 'btn btn-secondary glass-btn' : 'btn btn-primary';
+
+            titleLabel.innerText = isExam ? 'Exam Title / Topic' : 'Comment Title';
+            titleInput.placeholder = isExam
+                ? 'e.g., Second Term Mathematics Exam — Fractions'
+                : 'e.g., End of Term Comment — John Doe';
+
+            studentGroup.classList.toggle('hidden', isExam);
+            studentInput.required = !isExam;
+
+            contentLabel.innerText = isExam ? 'Paste the Exam (Markdown or plain text)' : 'Comment';
+            contentInput.placeholder = isExam
+                ? 'Paste the exam content here — you can copy it from a generated exam in History, or write it directly.'
+                : 'Write your comment about this student\'s performance and behavior.';
+        }
+
+        btnExamType.addEventListener('click', () => setSubmissionType('exam'));
+        btnCommentType.addEventListener('click', () => setSubmissionType('comment'));
+
+        submissionForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errorEl = document.getElementById('submission-error');
+            const successEl = document.getElementById('submission-success');
+            errorEl.classList.add('hidden');
+            successEl.classList.add('hidden');
+
+            const payload = {
+                type: submissionType,
+                title: titleInput.value.trim(),
+                subject: document.getElementById('submission-subject').value,
+                classLevel: document.getElementById('submission-class').value,
+                studentName: submissionType === 'comment' ? studentInput.value.trim() : undefined,
+                content: contentInput.value.trim()
+            };
+
+            const btn = document.getElementById('btn-submit-work');
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/api/submissions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Failed to submit.');
+
+                successEl.textContent = 'Submitted for admin review.';
+                successEl.classList.remove('hidden');
+                submissionForm.reset();
+                setSubmissionType(submissionType);
+                window.loadSubmissions();
+            } catch (error) {
+                errorEl.textContent = error.message;
+                errorEl.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+            }
+        });
+    }
+
     // Syllabus Ingestion Flow
     const syllabusForm = document.getElementById('syllabus-form');
     if (syllabusForm) {
@@ -787,6 +869,7 @@ window.navigateTo = function (sectionId) {
     const titleMap = {
         'dashboard-content': 'Welcome back, Educator',
         'history-view': 'History & Saved Documents',
+        'submissions-view': 'Submit to Admin',
         'lesson-planner': 'Lesson Planner',
         'monthly-lesson-planner': 'Monthly Lesson Planner',
         'exam-generator': 'Exam Generator',
@@ -1052,6 +1135,7 @@ window.loadAssignedSubjects = async function () {
             populateSubjectSelect(document.getElementById(id), scoped, false);
         });
         populateSubjectSelect(document.getElementById('diagram-subject'), scoped, true);
+        populateSubjectSelect(document.getElementById('submission-subject'), scoped, true);
     } catch (error) {
         console.error('Failed to load assigned subjects:', error);
     }
@@ -1099,6 +1183,75 @@ window.loadHistory = async function () {
 
     const statsExam = document.querySelector('.stat-card:nth-child(2) .stat-value');
     if (statsExam) statsExam.innerText = historyCache.filter(h => h.type === 'Examination').length;
+};
+
+// Submissions the teacher has sent to the admin for review (exams + student
+// comments). Loaded on login and refreshed after every submit/withdraw.
+let submissionsCache = [];
+
+const statusPillHtml = {
+    pending: '<span class="pill pill-warning"><i class="ph ph-clock"></i> Pending</span>',
+    approved: '<span class="pill pill-success"><i class="ph ph-check"></i> Approved</span>',
+    rejected: '<span class="pill pill-danger"><i class="ph ph-x"></i> Rejected</span>'
+};
+
+window.loadSubmissions = async function () {
+    const container = document.getElementById('submissions-container');
+    if (!container) return;
+
+    try {
+        const response = await fetch('/api/submissions');
+        if (!response.ok) throw new Error('Failed to load submissions');
+        const data = await response.json();
+        submissionsCache = data.data || [];
+    } catch (error) {
+        console.error('Failed to load submissions:', error);
+        container.innerHTML = '<div class="empty-state"><div class="pulse-icon"><i class="ph ph-warning"></i></div><h3>Could not load your submissions</h3><p>Please check your connection and try again.</p></div>';
+        return;
+    }
+
+    if (submissionsCache.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="pulse-icon"><i class="ph ph-paper-plane-tilt"></i></div><h3>Nothing submitted yet</h3><p>Exams and student comments you submit for admin review will show up here with their status.</p></div>';
+        return;
+    }
+
+    container.innerHTML = submissionsCache.map((item) => {
+        const meta = [item.classLevel, item.subject, item.studentName].filter(Boolean).join(' | ');
+        const dateLabel = new Date(item.createdAt).toLocaleDateString();
+        const feedback = item.adminFeedback
+            ? '<p style="font-size:0.85rem; color:var(--clr-text-muted); margin-top:0.5rem;"><strong>Admin feedback:</strong> ' + escapeHtmlApp(item.adminFeedback) + '</p>'
+            : '';
+        const withdrawBtn = item.status === 'pending'
+            ? '<button class="btn btn-secondary glass-btn" style="margin-top:0.75rem;" onclick="withdrawSubmission(\'' + item.id + '\')"><i class="ph ph-x"></i> Withdraw</button>'
+            : '';
+        return '<div class="history-item glass-panel" style="margin-bottom:1rem; padding: 1.5rem; border">' +
+            '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; gap:0.5rem; flex-wrap:wrap;">' +
+            '<span style="font-size:0.85rem; font-weight:700; color:var(--clr-primary); text-transform:uppercase;">' + (item.type === 'exam' ? 'Exam' : 'Student Comment') + '</span>' +
+            (statusPillHtml[item.status] || '') +
+            '</div>' +
+            '<h4 style="margin-bottom:0.5rem; font-size:1.1rem; color: var(--clr-text);">' + escapeHtmlApp(item.title) + '</h4>' +
+            '<p style="font-size:0.9rem; color:var(--clr-text-muted);">' + escapeHtmlApp(meta) + ' — ' + dateLabel + '</p>' +
+            feedback + withdrawBtn +
+            '</div>';
+    }).join('');
+};
+
+function escapeHtmlApp(str) {
+    const div = document.createElement('div');
+    div.innerText = str == null ? '' : str;
+    return div.innerHTML;
+}
+
+window.withdrawSubmission = async function (id) {
+    if (!confirm('Withdraw this submission?')) return;
+    try {
+        const response = await fetch('/api/submissions/' + id, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Failed to withdraw submission');
+        window.loadSubmissions();
+    } catch (error) {
+        console.error('Withdraw submission error:', error);
+        alert('Could not withdraw submission. Please try again.');
+    }
 };
 
 window.viewHistoryItem = function (id) {

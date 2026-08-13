@@ -19,6 +19,15 @@ const ContentState = {
     total: 0
 };
 
+const SubmissionsState = {
+    page: 1,
+    pageSize: 10,
+    teacherId: '',
+    type: '',
+    status: '',
+    total: 0
+};
+
 let teacherOptionsCache = [];
 let curriculaCache = [];
 let subjectsCache = [];
@@ -418,6 +427,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
         const target = item.getAttribute('data-target');
         switchSection(target);
         if (target === 'admin-curriculum') loadCurricula();
+        if (target === 'admin-submissions') { refreshTeacherFilterOptions(); loadSubmissions(); }
         if (target === 'admin-settings') { loadAdmins(); loadSubjectsSettings(); }
     });
 });
@@ -452,11 +462,14 @@ document.getElementById('admin-logout-btn').addEventListener('click', async () =
 // ===================== Teacher Content (read-only, all teachers) =====================
 
 function refreshTeacherFilterOptions() {
-    const select = document.getElementById('content-teacher-filter');
-    const current = select.value;
-    select.innerHTML = '<option value="">All Teachers</option>' +
-        teacherOptionsCache.map(t => `<option value="${t.id}">${escapeHtml(t.fullName)} (${escapeHtml(t.teacherId)})</option>`).join('');
-    select.value = current;
+    ['content-teacher-filter', 'submissions-teacher-filter'].forEach(id => {
+        const select = document.getElementById(id);
+        if (!select) return;
+        const current = select.value;
+        select.innerHTML = '<option value="">All Teachers</option>' +
+            teacherOptionsCache.map(t => `<option value="${t.id}">${escapeHtml(t.fullName)} (${escapeHtml(t.teacherId)})</option>`).join('');
+        select.value = current;
+    });
 }
 
 async function loadContent() {
@@ -570,6 +583,175 @@ document.getElementById('content-view-modal-close').addEventListener('click', ()
 });
 document.getElementById('content-view-modal').addEventListener('click', (e) => {
     if (e.target.id === 'content-view-modal') e.target.classList.add('hidden');
+});
+
+// ===================== Submissions (exams + student comments) =====================
+
+const submissionStatusPill = {
+    pending: '<span class="pill pill-warning"><i class="ph ph-clock"></i> Pending</span>',
+    approved: '<span class="pill pill-success"><i class="ph ph-check"></i> Approved</span>',
+    rejected: '<span class="pill pill-danger"><i class="ph ph-x"></i> Rejected</span>'
+};
+
+async function loadSubmissions() {
+    const tbody = document.getElementById('submissions-tbody');
+    const errorEl = document.getElementById('submissions-error');
+    hideMsg(errorEl);
+
+    try {
+        const params = new URLSearchParams({
+            page: SubmissionsState.page,
+            pageSize: SubmissionsState.pageSize
+        });
+        if (SubmissionsState.teacherId) params.set('teacherId', SubmissionsState.teacherId);
+        if (SubmissionsState.type) params.set('type', SubmissionsState.type);
+        if (SubmissionsState.status) params.set('status', SubmissionsState.status);
+
+        const result = await apiRequest(`/api/admin/submissions?${params.toString()}`);
+        SubmissionsState.total = result.total;
+
+        if (result.data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--clr-text-muted); padding:2rem;">No submissions found.</td></tr>';
+        } else {
+            tbody.innerHTML = result.data.map(item => `
+                <tr>
+                    <td>${item.teacher ? escapeHtml(item.teacher.fullName) + ' (' + escapeHtml(item.teacher.teacherId) + ')' : 'Unknown'}</td>
+                    <td>${item.type === 'exam' ? 'Exam' : 'Student Comment'}</td>
+                    <td>${escapeHtml(item.title)}</td>
+                    <td>${[item.classLevel, item.subject].filter(Boolean).map(escapeHtml).join(' | ')}</td>
+                    <td>${submissionStatusPill[item.status] || escapeHtml(item.status)}</td>
+                    <td>${formatDate(item.createdAt)}</td>
+                    <td class="table-actions">
+                        <button class="btn btn-secondary" data-submission-action="open" data-id="${item.id}">Open</button>
+                        <a class="btn btn-secondary" href="/api/admin/submissions/${item.id}/download">Download</a>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        const totalPages = Math.max(Math.ceil(SubmissionsState.total / SubmissionsState.pageSize), 1);
+        document.getElementById('submissions-pagination-info').innerText = `Page ${SubmissionsState.page} of ${totalPages} (${SubmissionsState.total} submissions)`;
+        document.getElementById('submissions-prev-page-btn').disabled = SubmissionsState.page <= 1;
+        document.getElementById('submissions-next-page-btn').disabled = SubmissionsState.page >= totalPages;
+    } catch (error) {
+        showMsg(errorEl, error.message);
+        tbody.innerHTML = '';
+    }
+}
+
+document.getElementById('submissions-teacher-filter').addEventListener('change', (e) => {
+    SubmissionsState.teacherId = e.target.value;
+    SubmissionsState.page = 1;
+    loadSubmissions();
+});
+document.getElementById('submissions-type-filter').addEventListener('change', (e) => {
+    SubmissionsState.type = e.target.value;
+    SubmissionsState.page = 1;
+    loadSubmissions();
+});
+document.getElementById('submissions-status-filter').addEventListener('change', (e) => {
+    SubmissionsState.status = e.target.value;
+    SubmissionsState.page = 1;
+    loadSubmissions();
+});
+document.getElementById('submissions-prev-page-btn').addEventListener('click', () => {
+    if (SubmissionsState.page > 1) { SubmissionsState.page -= 1; loadSubmissions(); }
+});
+document.getElementById('submissions-next-page-btn').addEventListener('click', () => {
+    const totalPages = Math.max(Math.ceil(SubmissionsState.total / SubmissionsState.pageSize), 1);
+    if (SubmissionsState.page < totalPages) { SubmissionsState.page += 1; loadSubmissions(); }
+});
+
+document.getElementById('submissions-tbody').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-submission-action="open"]');
+    if (!btn) return;
+    openSubmissionModal(btn.dataset.id);
+});
+
+async function openSubmissionModal(id) {
+    const modal = document.getElementById('submission-view-modal');
+    const titleEl = document.getElementById('submission-view-modal-title');
+    const bodyEl = document.getElementById('submission-view-modal-body');
+
+    modal.classList.remove('hidden');
+    titleEl.innerText = 'Loading...';
+    bodyEl.innerHTML = '<div class="loader-spinner" style="margin: 2rem auto;"></div>';
+
+    try {
+        const item = await apiRequest(`/api/admin/submissions/${id}`);
+        titleEl.innerText = `${item.type === 'exam' ? 'Exam' : 'Student Comment'} — ${item.title}`;
+
+        const metaBits = [
+            item.teacher ? `By ${escapeHtml(item.teacher.fullName)} (${escapeHtml(item.teacher.teacherId)})` : null,
+            item.studentName ? `Student: ${escapeHtml(item.studentName)}` : null,
+            [item.classLevel, item.subject].filter(Boolean).map(escapeHtml).join(' | ') || null,
+            formatDate(item.createdAt)
+        ].filter(Boolean).join(' — ');
+
+        const contentHtml = typeof marked !== 'undefined' ? marked.parse(item.content) : escapeHtml(item.content);
+
+        const feedbackNote = item.adminFeedback
+            ? `<p style="margin-top:0.5rem; color:var(--clr-text-muted);"><strong>Previous feedback:</strong> ${escapeHtml(item.adminFeedback)}</p>`
+            : '';
+
+        const reviewControls = item.status === 'pending' ? `
+            <div class="input-group" style="margin-top:1rem;">
+                <label for="submission-review-feedback">Feedback (optional)</label>
+                <textarea id="submission-review-feedback" rows="2" style="width:100%; padding:0.75rem; border-radius:var(--border-radius-sm); border:1px solid var(--clr-border); background:rgba(0,0,0,0.02); resize:vertical;"></textarea>
+            </div>
+            <div style="display:flex; gap:0.75rem; margin-top:0.75rem; flex-wrap:wrap;">
+                <button class="btn btn-success" data-review-action="approved" data-id="${item.id}"><i class="ph ph-check"></i> Approve</button>
+                <button class="btn btn-danger" data-review-action="rejected" data-id="${item.id}"><i class="ph ph-x"></i> Reject</button>
+                <a class="btn btn-secondary" href="/api/admin/submissions/${item.id}/download"><i class="ph ph-download-simple"></i> Download</a>
+            </div>
+        ` : `
+            <div style="display:flex; gap:0.75rem; margin-top:1rem; flex-wrap:wrap; align-items:center;">
+                ${submissionStatusPill[item.status] || ''}
+                <a class="btn btn-secondary" href="/api/admin/submissions/${item.id}/download"><i class="ph ph-download-simple"></i> Download</a>
+            </div>
+        `;
+
+        bodyEl.innerHTML = `
+            <p style="color:var(--clr-text-muted); margin-bottom:1rem;">${metaBits}</p>
+            <div class="markdown-content" style="white-space:pre-wrap;">${contentHtml}</div>
+            ${feedbackNote}
+            <div id="submission-review-error" class="form-error hidden"></div>
+            ${reviewControls}
+        `;
+    } catch (error) {
+        titleEl.innerText = 'Error';
+        bodyEl.innerHTML = `<div class="form-error">${escapeHtml(error.message)}</div>`;
+    }
+}
+
+document.getElementById('submission-view-modal-body').addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-review-action]');
+    if (!btn) return;
+
+    const { reviewAction, id } = btn.dataset;
+    const feedbackEl = document.getElementById('submission-review-feedback');
+    const errorEl = document.getElementById('submission-review-error');
+    hideMsg(errorEl);
+    btn.disabled = true;
+
+    try {
+        await apiRequest(`/api/admin/submissions/${id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status: reviewAction, adminFeedback: feedbackEl ? feedbackEl.value.trim() : '' })
+        });
+        document.getElementById('submission-view-modal').classList.add('hidden');
+        await loadSubmissions();
+    } catch (error) {
+        showMsg(errorEl, error.message);
+        btn.disabled = false;
+    }
+});
+
+document.getElementById('submission-view-modal-close').addEventListener('click', () => {
+    document.getElementById('submission-view-modal').classList.add('hidden');
+});
+document.getElementById('submission-view-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'submission-view-modal') e.target.classList.add('hidden');
 });
 
 // ===================== Curriculum management =====================

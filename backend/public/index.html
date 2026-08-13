@@ -70,6 +70,9 @@
                 <a href="#" class="nav-item" data-target="history-view">
                     <i class="ph ph-clock-counter-clockwise"></i> History / Saves
                 </a>
+                <a href="#" class="nav-item" data-target="submissions-view">
+                    <i class="ph ph-paper-plane-tilt"></i> Submit to Admin
+                </a>
                 <div class="nav-divider"></div>
                 <h3 class="nav-heading">Generators</h3>
                 <a href="#" class="nav-item" data-target="lesson-planner">
@@ -205,6 +208,78 @@
                             <button class="btn btn-primary" onclick="navigateTo('lesson-planner')" style="margin-top:1rem;">
                                 <i class="ph ph-magic-wand"></i> Generate a Lesson Plan
                             </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit to Admin Section -->
+                <div id="submissions-view" class="content-section">
+                    <div class="form-layout">
+                        <div class="form-panel glass-panel">
+                            <h3>Submit Work for Review</h3>
+                            <div class="submission-type-toggle" style="display:flex; gap:0.75rem; margin-bottom:1.25rem;">
+                                <button type="button" class="btn btn-primary" id="btn-submission-type-exam" data-type="exam">
+                                    <i class="ph ph-file-text"></i> Exam
+                                </button>
+                                <button type="button" class="btn btn-secondary glass-btn" id="btn-submission-type-comment" data-type="comment">
+                                    <i class="ph ph-chat-text"></i> Student Comment
+                                </button>
+                            </div>
+                            <form id="submission-form">
+                                <div class="form-grid">
+                                    <div class="input-group full-width" id="submission-title-group">
+                                        <label for="submission-title" id="submission-title-label">Exam Title / Topic</label>
+                                        <input type="text" id="submission-title" placeholder="e.g., Second Term Mathematics Exam — Fractions" required>
+                                    </div>
+                                    <div class="input-group full-width hidden" id="submission-student-group">
+                                        <label for="submission-student">Student Name</label>
+                                        <input type="text" id="submission-student" placeholder="e.g., John Doe">
+                                    </div>
+                                    <div class="input-group">
+                                        <label for="submission-subject">Subject</label>
+                                        <select id="submission-subject">
+                                            <option value="">Select Subject</option>
+                                        </select>
+                                    </div>
+                                    <div class="input-group">
+                                        <label for="submission-class">Class / Grade</label>
+                                        <select id="submission-class">
+                                            <option value="">Select Class</option>
+                                            <option value="Nursery 1">Nursery 1</option>
+                                            <option value="Nursery 2">Nursery 2</option>
+                                            <option value="Primary 1">Primary 1</option>
+                                            <option value="Primary 2">Primary 2</option>
+                                            <option value="Primary 3">Primary 3</option>
+                                            <option value="Primary 4">Primary 4</option>
+                                            <option value="Primary 5">Primary 5</option>
+                                            <option value="Primary 6">Primary 6</option>
+                                        </select>
+                                    </div>
+                                    <div class="input-group full-width" id="submission-content-group">
+                                        <label for="submission-content" id="submission-content-label">Paste the Exam (Markdown or plain text)</label>
+                                        <textarea id="submission-content" rows="10" placeholder="Paste the exam content here — you can copy it from a generated exam in History, or write it directly." required
+                                            style="width: 100%; padding: 0.85rem; border-radius: var(--border-radius-sm); border: 1px solid var(--clr-border); background: rgba(0,0,0,0.02); resize: vertical; font-family: 'Times New Roman', Times, serif;"></textarea>
+                                    </div>
+                                </div>
+                                <div id="submission-error" class="form-error hidden"></div>
+                                <div id="submission-success" class="form-success hidden"></div>
+                                <div class="form-actions">
+                                    <button type="submit" class="btn btn-primary" id="btn-submit-work">
+                                        <i class="ph ph-paper-plane-tilt"></i> Submit to Admin
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="preview-panel glass-panel" id="submissions-list-panel" style="overflow-y:auto;">
+                            <h3 style="margin-bottom:1rem;">My Submissions</h3>
+                            <div id="submissions-container">
+                                <div class="empty-state">
+                                    <div class="pulse-icon"><i class="ph ph-paper-plane-tilt"></i></div>
+                                    <h3>Nothing submitted yet</h3>
+                                    <p>Exams and student comments you submit for admin review will show up here with their status.</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
