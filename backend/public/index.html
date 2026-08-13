@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="dark-theme">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
@@ -46,12 +46,9 @@
                         <input type="password" id="password" placeholder="••••••••" required>
                     </div>
                 </div>
-                <div
-                    style="font-size: 0.8rem; color: var(--clr-text-muted); text-align: center; margin-bottom: 0.5rem;">
-                    *If you don't have an ID, we'll create a local profile for you.
-                </div>
-                <button type="submit" class="btn btn-primary btn-block">
-                    <span>Login / Create Profile</span>
+                <div id="login-error" class="form-error hidden"></div>
+                <button type="submit" class="btn btn-primary btn-block" id="btn-login">
+                    <span>Log In</span>
                     <i class="ph ph-arrow-right"></i>
                 </button>
             </form>
@@ -127,7 +124,7 @@
                 <h2 id="page-title">Welcome back, Educator</h2>
                 <div class="header-actions">
                     <button class="btn btn-icon glass-btn"><i class="ph ph-bell"></i></button>
-                    <button class="btn btn-icon glass-btn" id="theme-toggle"><i class="ph ph-sun"></i></button>
+                    <button class="btn btn-icon glass-btn" id="theme-toggle"><i class="ph ph-moon"></i></button>
                 </div>
             </header>
 
@@ -135,22 +132,22 @@
                 <!-- Dashboard Content -->
                 <div id="dashboard-content" class="content-section active-section">
                     <div class="stats-grid">
-                        <div class="stat-card glass-panel">
-                            <div class="stat-icon blue"><i class="ph ph-book-open"></i></div>
+                        <div class="stat-card glass-panel stat-card-primary">
+                            <div class="stat-icon"><i class="ph ph-book-open"></i></div>
                             <div class="stat-details">
                                 <span class="stat-value">12</span>
                                 <span class="stat-label">Lesson Plans Generated</span>
                             </div>
                         </div>
-                        <div class="stat-card glass-panel">
-                            <div class="stat-icon purple"><i class="ph ph-file-text"></i></div>
+                        <div class="stat-card glass-panel stat-card-teal">
+                            <div class="stat-icon"><i class="ph ph-file-text"></i></div>
                             <div class="stat-details">
                                 <span class="stat-value">4</span>
                                 <span class="stat-label">Exams Created</span>
                             </div>
                         </div>
-                        <div class="stat-card glass-panel">
-                            <div class="stat-icon orange"><i class="ph ph-clock"></i></div>
+                        <div class="stat-card glass-panel stat-card-success">
+                            <div class="stat-icon"><i class="ph ph-clock"></i></div>
                             <div class="stat-details">
                                 <span class="stat-value">8h</span>
                                 <span class="stat-label">Time Saved this Week</span>
@@ -176,15 +173,14 @@
                                 <p>Bloom's Taxonomy aligned</p>
                             </div>
                             <div class="action-card glass-panel" onclick="navigateTo('worksheet-generator')">
-                                <div class="action-img gradient-1"
-                                    style="background: linear-gradient(135deg, #10b981, #059669);">
+                                <div class="action-img gradient-2">
                                     <i class="ph ph-files"></i>
                                 </div>
                                 <h4>Generate Worksheet</h4>
                                 <p>Printable class exercises</p>
                             </div>
                             <div class="action-card glass-panel" onclick="navigateTo('syllabus-ingestion')">
-                                <div class="action-img gradient-2" style="background: linear-gradient(135deg, #0ea5e9, #3b82f6);">
+                                <div class="action-img gradient-1">
                                     <i class="ph ph-upload-simple"></i>
                                 </div>
                                 <h4>Upload Syllabus</h4>
@@ -203,8 +199,12 @@
                     </div>
                     <div class="history-grid" id="history-container">
                         <div class="empty-state">
-                            <i class="ph ph-file-dashed pulse-icon"></i>
-                            <p>You have not generated anything yet.</p>
+                            <div class="pulse-icon"><i class="ph ph-file-dashed"></i></div>
+                            <h3>Nothing here yet</h3>
+                            <p>Everything you generate — lesson plans, exams, worksheets, and more — will be saved here automatically.</p>
+                            <button class="btn btn-primary" onclick="navigateTo('lesson-planner')" style="margin-top:1rem;">
+                                <i class="ph ph-magic-wand"></i> Generate a Lesson Plan
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -222,7 +222,7 @@
                                     </div>
                                 </div>
                                 <div class="form-actions">
-                                    <button type="submit" class="btn btn-primary" id="btn-upload-syllabus" style="background: linear-gradient(135deg, #0ea5e9, #3b82f6); box-shadow: 0 4px 15px rgba(14, 165, 233, 0.4);">
+                                    <button type="submit" class="btn btn-primary" id="btn-upload-syllabus">
                                         <i class="ph ph-magic-wand"></i> Extract Curriculum
                                     </button>
                                 </div>
@@ -245,6 +245,17 @@
                     <div class="form-layout">
                         <div class="form-panel glass-panel">
                             <h3>Lesson Details</h3>
+                            <div id="lesson-curriculum-banner" class="curriculum-banner hidden">
+                                <i class="ph ph-books"></i>
+                                <div class="curriculum-banner-text">
+                                    <strong>Based on the school curriculum</strong>
+                                    <p id="lesson-curriculum-banner-detail"></p>
+                                </div>
+                                <div class="curriculum-banner-actions">
+                                    <button type="button" class="btn btn-primary" id="btn-use-curriculum">Use</button>
+                                    <button type="button" class="btn btn-secondary" id="btn-skip-curriculum">Skip</button>
+                                </div>
+                            </div>
                             <form id="lesson-form">
                                 <div class="form-grid">
                                     <div class="input-group">
@@ -428,6 +439,7 @@
                                     <div class="input-group full-width">
                                         <label for="ml-theme">Main Theme / Strand for the Month</label>
                                         <input type="text" id="ml-theme" placeholder="e.g., Numbers and Operations, Living Things, Sentence Construction" required>
+                                        <div id="ml-curriculum-status" class="form-success hidden" style="margin-top:0.5rem; margin-bottom:0;"></div>
                                     </div>
                                     <div class="input-group full-width">
                                         <label for="ml-topics">Topics to Cover (one per line or comma-separated)</label>
@@ -443,8 +455,7 @@
                                     </div>
                                 </div>
                                 <div class="form-actions">
-                                    <button type="submit" class="btn btn-primary" id="btn-generate-monthly"
-                                        style="background: linear-gradient(135deg, #7c3aed, #4f46e5); box-shadow: 0 4px 15px rgba(124,58,237,0.4);">
+                                    <button type="submit" class="btn btn-primary" id="btn-generate-monthly">
                                         <i class="ph ph-calendar-dots"></i> Generate Monthly Plan
                                     </button>
                                 </div>
@@ -645,9 +656,7 @@
                                     </div>
                                 </div>
                                 <div class="form-actions">
-                                    <button type="submit" class="btn btn-primary"
-                                        style="background: linear-gradient(135deg, #10b981, #059669); color: white; border: none;"
-                                        id="btn-generate-worksheet">
+                                    <button type="submit" class="btn btn-success" id="btn-generate-worksheet">
                                         <i class="ph ph-files"></i> Generate Worksheet
                                     </button>
                                 </div>
@@ -709,9 +718,7 @@
                                     </div>
                                 </div>
                                 <div class="form-actions">
-                                    <button type="submit" class="btn btn-primary"
-                                        style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border: none;"
-                                        id="btn-generate-report">
+                                    <button type="submit" class="btn btn-primary" id="btn-generate-report">
                                         <i class="ph ph-trend-up"></i> Generate Comment
                                     </button>
                                 </div>
@@ -822,8 +829,7 @@
                                     </div>
                                 </div>
                                 <div class="form-actions">
-                                    <button type="submit" class="btn btn-primary" id="btn-generate-diagram"
-                                        style="background: linear-gradient(135deg, #7c3aed, #6d28d9); box-shadow: 0 4px 15px rgba(124,58,237,0.4);">
+                                    <button type="submit" class="btn btn-secondary" id="btn-generate-diagram">
                                         <i class="ph ph-graph"></i> Generate Diagram
                                     </button>
                                 </div>
@@ -880,6 +886,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="password-toggle.js"></script>
     <script src="app.js"></script>
 </body>
 

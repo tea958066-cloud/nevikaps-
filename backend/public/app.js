@@ -11,40 +11,23 @@ if (typeof mermaid !== 'undefined') {
 // State Management
 const State = {
     isAuthenticated: false,
-    theme: 'dark',
-    currentUser: null
+    theme: 'light',
+    currentUser: null,
+    currentRole: null
 };
 
-// LocalStorage Database Wrapper
+// Generated content is now persisted server-side (see /api/content); this
+// wrapper just gives the "Clear History" button a server-backed action.
 const DB = {
-    initUser(username) {
-        let users = JSON.parse(localStorage.getItem('nevicaps_users') || '{}');
-        if (!users[username]) {
-            users[username] = { username: username, history: [] };
-            localStorage.setItem('nevicaps_users', JSON.stringify(users));
-        }
-        return users[username];
-    },
-    saveGeneration(username, item) {
-        let users = JSON.parse(localStorage.getItem('nevicaps_users') || '{}');
-        if (users[username]) {
-            // Unshift to put newest at the top
-            item.id = Date.now().toString();
-            item.date = new Date().toLocaleDateString();
-            users[username].history.unshift(item);
-            localStorage.setItem('nevicaps_users', JSON.stringify(users));
-        }
-    },
-    getHistory(username) {
-        let users = JSON.parse(localStorage.getItem('nevicaps_users') || '{}');
-        return users[username] ? users[username].history : [];
-    },
-    clearHistory() {
-        if (State.currentUser && confirm('Are you sure you want to clear your generation history?')) {
-            let users = JSON.parse(localStorage.getItem('nevicaps_users') || '{}');
-            users[State.currentUser].history = [];
-            localStorage.setItem('nevicaps_users', JSON.stringify(users));
+    async clearHistory() {
+        if (!State.currentUser || !confirm('Are you sure you want to clear your generation history?')) return;
+        try {
+            const response = await fetch('/api/content', { method: 'DELETE' });
+            if (!response.ok) throw new Error('Failed to clear history');
             window.loadHistory();
+        } catch (error) {
+            console.error('Clear history error:', error);
+            alert('Could not clear history. Please try again.');
         }
     }
 };
@@ -115,9 +98,10 @@ const NexicapsAI = {
         }
     },
 
-    async generateImage(prompt) {
+    async generateImage(prompt, standalone = false) {
         try {
-            const response = await fetch(`/api/generate/image?prompt=${encodeURIComponent(prompt)}`);
+            const url = `/api/generate/image?prompt=${encodeURIComponent(prompt)}${standalone ? '&standalone=true' : ''}`;
+            const response = await fetch(url);
             if (!response.ok) throw new Error('Network response was not ok');
             const data = await response.json();
             return data.url;
@@ -199,6 +183,8 @@ const NexicapsAI = {
 // UI Interactions
 document.addEventListener('DOMContentLoaded', () => {
 
+    attachPasswordTogglesTo(['#password']);
+
     // Theme Toggle
     const themeBtn = document.getElementById('theme-toggle');
     themeBtn.addEventListener('click', () => {
@@ -214,33 +200,105 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Login Form Submit
+    // --- Auth: real server-backed login. Teachers never set or change their
+    // own credentials — only an admin can, from the Teachers roster. ---
     const loginForm = document.getElementById('login-form');
-    loginForm.addEventListener('submit', (e) => {
-        e.preventDefault();
+    const loginError = document.getElementById('login-error');
 
-        const username = document.getElementById('username').value.trim();
-        if (!username) return;
+    function showError(el, message) {
+        el.textContent = message;
+        el.classList.remove('hidden');
+    }
+    function hideError(el) {
+        el.classList.add('hidden');
+        el.textContent = '';
+    }
 
-        DB.initUser(username);
-        State.currentUser = username;
-
-        document.querySelector('.user-name').innerText = username;
-        document.querySelector('.avatar img').src = `https://ui-avatars.com/api/?name=${username}&background=random&color=fff`;
-
-        document.getElementById('login-view').classList.remove('active-view');
-        document.getElementById('dashboard-view').classList.add('active-view');
+    function enterDashboard(teacherId, fullName) {
+        State.currentUser = teacherId;
         State.isAuthenticated = true;
 
+        document.querySelector('.user-name').innerText = fullName || teacherId;
+        document.querySelector('.avatar img').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName || teacherId)}&background=random&color=fff`;
+
+        loginForm.reset();
+        document.getElementById('login-view').classList.remove('active-view');
+        document.getElementById('dashboard-view').classList.add('active-view');
+
         window.loadHistory();
+        if (typeof window.loadAssignedSubjects === 'function') window.loadAssignedSubjects();
+    }
+
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        hideError(loginError);
+
+        const id = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value;
+        if (!id || !password) return;
+
+        const btn = document.getElementById('btn-login');
+        btn.disabled = true;
+        btn.querySelector('span').innerText = 'Logging in...';
+
+        try {
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ id, password })
+            });
+            const data = await response.json();
+
+            if (!response.ok) {
+                showError(loginError, data.error || 'Login failed.');
+                return;
+            }
+
+            if (data.role === 'admin') {
+                window.location.href = '/admin';
+                return;
+            }
+
+            State.currentRole = 'teacher';
+            enterDashboard(data.id, data.fullName);
+        } catch (error) {
+            console.error('Login request failed:', error);
+            showError(loginError, 'Could not reach the server. Please try again.');
+        } finally {
+            btn.disabled = false;
+            btn.querySelector('span').innerText = 'Log In';
+        }
     });
 
     // Logout
-    document.getElementById('logout-btn').addEventListener('click', () => {
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+        try {
+            await fetch('/api/auth/logout', { method: 'POST' });
+        } catch (error) {
+            console.error('Logout request failed:', error);
+        }
         document.getElementById('dashboard-view').classList.remove('active-view');
         document.getElementById('login-view').classList.add('active-view');
         State.isAuthenticated = false;
+        State.currentUser = null;
     });
+
+    // Resume an existing session on page load/refresh instead of forcing a re-login.
+    (async function checkExistingSession() {
+        try {
+            const response = await fetch('/api/auth/me');
+            if (!response.ok) return;
+            const data = await response.json();
+            if (data.role === 'admin') {
+                window.location.href = '/admin';
+            } else if (data.role === 'teacher') {
+                enterDashboard(data.id, data.id);
+            }
+        } catch (error) {
+            // No session yet — stay on the login screen.
+        }
+    })();
 
     // Navigation Logic
     const navItems = document.querySelectorAll('.nav-item:not(.disabled)');
@@ -254,6 +312,59 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Set today's date in lesson planner
     document.getElementById('lesson-date').valueAsDate = new Date();
+
+    // Curriculum proposal: when Class + Subject (+ Date) are picked, check the
+    // active admin curriculum for that month. It's always a suggestion the
+    // teacher can accept (Use) or ignore (Skip) — never forced.
+    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    let lessonCurriculumEntry = null;
+    const lessonBanner = document.getElementById('lesson-curriculum-banner');
+    const lessonBannerDetail = document.getElementById('lesson-curriculum-banner-detail');
+
+    async function tryLoadCurriculumForLessonPlanner() {
+        const classLevel = document.getElementById('lesson-class').value;
+        const subject = document.getElementById('lesson-subject').value;
+        const dateValue = document.getElementById('lesson-date').value;
+
+        lessonBanner.classList.add('hidden');
+        lessonCurriculumEntry = null;
+        if (!classLevel || !subject) return;
+
+        const month = dateValue ? monthNames[new Date(dateValue).getMonth()] : '';
+
+        try {
+            const params = new URLSearchParams({ classLevel, subject, month });
+            const response = await fetch(`/api/curriculum/lookup?${params.toString()}`);
+            if (!response.ok) return;
+            const result = await response.json();
+
+            if (result.found && (result.entry.theme || (result.entry.topics || []).length > 0)) {
+                lessonCurriculumEntry = result.entry;
+                const topicSummary = (result.entry.topics || []).join(', ');
+                lessonBannerDetail.textContent = `Today's suggested focus — Theme: ${result.entry.theme || 'N/A'}${topicSummary ? `, Topic: ${topicSummary}` : ''}`;
+                lessonBanner.classList.remove('hidden');
+            }
+        } catch (error) {
+            console.error('Curriculum lookup failed:', error);
+        }
+    }
+
+    ['lesson-class', 'lesson-subject', 'lesson-date'].forEach(id => {
+        document.getElementById(id).addEventListener('change', tryLoadCurriculumForLessonPlanner);
+    });
+
+    document.getElementById('btn-use-curriculum').addEventListener('click', () => {
+        if (!lessonCurriculumEntry) return;
+        document.getElementById('lesson-theme').value = lessonCurriculumEntry.theme || '';
+        const topics = lessonCurriculumEntry.topics || [];
+        document.getElementById('lesson-topic').value = topics[0] || '';
+        document.getElementById('lesson-subtopic').value = topics.slice(1).join(', ');
+        lessonBanner.classList.add('hidden');
+    });
+
+    document.getElementById('btn-skip-curriculum').addEventListener('click', () => {
+        lessonBanner.classList.add('hidden');
+    });
 
     // Lesson Generation Flow
     const lessonForm = document.getElementById('lesson-form');
@@ -283,9 +394,6 @@ document.addEventListener('DOMContentLoaded', () => {
             finalMarkdown = `![Lesson Representation](${imageUrl})\n\n` + finalMarkdown;
         }
 
-        DB.saveGeneration(State.currentUser, {
-            type: 'Lesson Plan', title: input.topic, content: finalMarkdown, meta: `${input.class} | ${input.subject}`
-        });
         window.loadHistory();
 
         displayResult('lesson-preview', finalMarkdown, 'Lesson Plan');
@@ -340,9 +448,6 @@ document.addEventListener('DOMContentLoaded', () => {
             finalMarkdown = `![Exam Representation](${imageUrl})\n\n` + finalMarkdown;
         }
 
-        DB.saveGeneration(State.currentUser, {
-            type: 'Examination', title: input.topic, content: finalMarkdown, meta: `${input.class} | ${input.subject}`
-        });
         window.loadHistory();
 
         displayResult('exam-preview', finalMarkdown, 'Exam');
@@ -375,9 +480,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 finalMarkdown = `![Worksheet Representation](${imageUrl})\n\n` + finalMarkdown;
             }
 
-            DB.saveGeneration(State.currentUser, {
-                type: 'Worksheet', title: input.topic, content: finalMarkdown, meta: `${input.class} | ${input.subject}`
-            });
             window.loadHistory();
 
             displayResult('worksheet-preview', finalMarkdown, 'Worksheet');
@@ -410,9 +512,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 finalMarkdown = `![Report Card](${imageUrl})\n\n` + finalMarkdown;
             }
 
-            DB.saveGeneration(State.currentUser, {
-                type: 'Report Card', title: input.name, content: finalMarkdown, meta: input.subject
-            });
             window.loadHistory();
 
             displayResult('report-preview', finalMarkdown, 'Report_Card');
@@ -463,13 +562,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     finalMarkdown = `![Curriculum Map](${imageUrl})\n\n` + finalMarkdown;
                 }
 
-                DB.saveGeneration(State.currentUser, {
-                    type: 'Curriculum', 
-                    title: 'Syllabus PDF Extraction', 
-                    content: finalMarkdown, 
-                    meta: result.subjects ? result.subjects.join(', ') : 'Generated Curriculum'
-                });
-                window.loadHistory();
+
 
                 displayResult('syllabus-preview', finalMarkdown, 'Curriculum');
             } else {
@@ -489,7 +582,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const previewPanel = document.getElementById('custom-image-preview');
             previewPanel.innerHTML = '<div class="loader-spinner" style="margin: 3rem auto;"></div><p style="text-align:center;">Generating image...</p>';
 
-            const imageUrl = await NexicapsAI.generateImage(promptInput);
+            const imageUrl = await NexicapsAI.generateImage(promptInput, true);
+            window.loadHistory();
 
             if (imageUrl) {
                 previewPanel.innerHTML = `<img src="${imageUrl}" style="max-width: 100%; border-radius: var(--border-radius-sm); box-shadow: var(--glass-shadow);" alt="Generated visual">
@@ -512,6 +606,53 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('ml-month').value = months[now.getMonth()];
         document.getElementById('ml-year').value = now.getFullYear();
 
+        // Whenever Class/Subject/Term/Month are all chosen, pull the matching
+        // entry from the admin-managed curriculum and pre-fill theme/topics.
+        // Falls back silently to manual entry if nothing matches.
+        let mlCurriculumSourced = false;
+        const mlStatusEl = document.getElementById('ml-curriculum-status');
+        const mlThemeInput = document.getElementById('ml-theme');
+        const mlTopicsInput = document.getElementById('ml-topics');
+
+        async function tryLoadCurriculumForMonthlyPlan() {
+            const classLevel = document.getElementById('ml-class').value;
+            const subject = document.getElementById('ml-subject').value;
+            const term = document.getElementById('ml-term').value;
+            const month = document.getElementById('ml-month').value;
+
+            mlStatusEl.classList.add('hidden');
+            if (!classLevel || !subject) return;
+
+            try {
+                const params = new URLSearchParams({ classLevel, subject, term, month });
+                const response = await fetch(`/api/curriculum/lookup?${params.toString()}`);
+                if (!response.ok) return;
+                const result = await response.json();
+
+                if (result.found) {
+                    mlThemeInput.value = result.entry.theme || '';
+                    mlTopicsInput.value = (result.entry.topics || []).join('\n');
+                    mlCurriculumSourced = true;
+                    mlStatusEl.textContent = 'Loaded from the school curriculum for this class, subject, and month — still editable below.';
+                    mlStatusEl.classList.remove('hidden');
+                } else {
+                    mlCurriculumSourced = false;
+                }
+            } catch (error) {
+                console.error('Curriculum lookup failed:', error);
+            }
+        }
+
+        ['ml-class', 'ml-subject', 'ml-term', 'ml-month'].forEach(id => {
+            document.getElementById(id).addEventListener('change', tryLoadCurriculumForMonthlyPlan);
+        });
+
+        // Manual edits after an autofill mean the teacher has taken over —
+        // stop telling the AI this is authoritative curriculum scope.
+        [mlThemeInput, mlTopicsInput].forEach(el => {
+            el.addEventListener('input', () => { mlCurriculumSourced = false; });
+        });
+
         monthlyLessonForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -525,7 +666,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 lessonsPerWeek: document.getElementById('ml-lessons-per-week').value,
                 theme:          document.getElementById('ml-theme').value,
                 topics:         document.getElementById('ml-topics').value,
-                custom:         document.getElementById('ml-custom').value
+                custom:         document.getElementById('ml-custom').value,
+                curriculumSourced: mlCurriculumSourced
             };
 
             await simulateAILoading('monthly');
@@ -539,12 +681,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 finalMarkdown = `![Monthly Plan](${imageUrl})\n\n` + finalMarkdown;
             }
 
-            DB.saveGeneration(State.currentUser, {
-                type: 'Monthly Plan',
-                title: `${input.month} ${input.year} — ${input.subject}`,
-                content: finalMarkdown,
-                meta: `${input.class} | ${input.term}`
-            });
             window.loadHistory();
 
             displayResult('monthly-lesson-preview', finalMarkdown, 'Monthly_Lesson_Plan');
@@ -581,7 +717,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div id="${diagramId}" style="background: white; padding: 2rem; border-radius: var(--border-radius-sm); min-height: 200px; overflow: auto;"></div>
                 <div style="margin-top: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap; padding-top: 1rem; border-top: 1px solid var(--clr-border);">
                     <button class="btn btn-primary" onclick="downloadDiagramSVG('${diagramId}', '${input.topic}')"><i class="ph ph-download-simple"></i> Download SVG</button>
-                    <button class="btn btn-primary" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); box-shadow: 0 4px 15px rgba(37,99,235,0.4);" onclick="downloadDiagramPDF('${diagramId}', '${input.topic}')"><i class="ph ph-file-pdf"></i> Download PDF</button>
+                    <button class="btn btn-primary" onclick="downloadDiagramPDF('${diagramId}', '${input.topic}')"><i class="ph ph-file-pdf"></i> Download PDF</button>
                     <button class="btn btn-secondary glass-btn" onclick="showMermaidCode('${diagramId}')"><i class="ph ph-code"></i> View Code</button>
                 </div>`;
 
@@ -595,9 +731,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById(diagramId).innerHTML = `<pre style="white-space:pre-wrap; font-size:0.85rem; color: var(--clr-text);">${mermaidCode}</pre><p style="color:var(--clr-text-muted); margin-top:1rem; font-size:0.85rem;">⚠ Could not render as diagram. The raw code is shown above.</p>`;
             }
 
-            DB.saveGeneration(State.currentUser, {
-                type: 'Diagram', title: input.topic, content: '```mermaid\n' + mermaidCode + '\n```', meta: `${input.dtype} | ${input.subject || 'General'}`
-            });
             window.loadHistory();
         });
     }
@@ -712,7 +845,7 @@ function displayResult(containerId, markdown, typeLabel) {
         container.innerHTML = '<div class="markdown-content" id="pdf-content-' + containerId + '">' + html + '</div>' +
             '<div style="margin-top: 2rem; display: flex; gap: 1rem; padding-top: 1rem; border-top: 1px solid var(--clr-border); flex-wrap: wrap;">' +
             '<button class="btn btn-primary" onclick="downloadPDF(\'pdf-content-' + containerId + '\', \'' + (typeLabel || 'Document') + '\')"><i class="ph ph-file-pdf"></i> Download PDF</button>' +
-            '<button class="btn btn-primary" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); box-shadow: 0 4px 15px rgba(37,99,235,0.4);" onclick="downloadWord(\'pdf-content-' + containerId + '\', \'' + (typeLabel || 'Document') + '\')"><i class="ph ph-file-doc"></i> Download Word</button>' +
+            '<button class="btn btn-primary" onclick="downloadWord(\'pdf-content-' + containerId + '\', \'' + (typeLabel || 'Document') + '\')"><i class="ph ph-file-doc"></i> Download Word</button>' +
             '<button class="btn btn-secondary glass-btn" onclick="copyToClipboard(this)"><i class="ph ph-copy"></i> Copy Text</button>' +
             '</div>';
     } else {
@@ -879,48 +1012,125 @@ window.showMermaidCode = function (containerId) {
     modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
 };
 
-window.loadHistory = function () {
+// Subject dropdowns across every generator are populated from the admin's
+// subject list, scoped to what this teacher is assigned to teach.
+function populateSubjectSelect(select, subjects, includeAnyOption) {
+    if (!select) return;
+    const previousValue = select.value;
+    let html = includeAnyOption ? '<option value="">Any Subject</option>' : '<option value="">Select Subject</option>';
+
+    let lastLevel = null;
+    subjects.forEach(s => {
+        if (s.level !== lastLevel) {
+            if (lastLevel !== null) html += '</optgroup>';
+            html += `<optgroup label="— ${s.level} —">`;
+            lastLevel = s.level;
+        }
+        html += `<option value="${s.name}">${s.name}</option>`;
+    });
+    if (lastLevel !== null) html += '</optgroup>';
+
+    select.innerHTML = html;
+
+    const stillValid = Array.from(select.options).some(o => o.value === previousValue);
+    select.value = stillValid ? previousValue : (subjects[0] ? subjects[0].name : '');
+}
+
+window.loadAssignedSubjects = async function () {
+    try {
+        const response = await fetch('/api/subjects');
+        if (!response.ok) return;
+        const result = await response.json();
+
+        // A teacher with no assignments yet still needs a working dropdown —
+        // fall back to the full list rather than locking them out.
+        const scoped = result.assignedSubjectIds && result.assignedSubjectIds.length > 0
+            ? result.data.filter(s => result.assignedSubjectIds.includes(s.id))
+            : result.data;
+
+        ['lesson-subject', 'ml-subject', 'exam-subject', 'worksheet-subject'].forEach(id => {
+            populateSubjectSelect(document.getElementById(id), scoped, false);
+        });
+        populateSubjectSelect(document.getElementById('diagram-subject'), scoped, true);
+    } catch (error) {
+        console.error('Failed to load assigned subjects:', error);
+    }
+};
+
+// In-memory cache of the teacher's own history, loaded from the server —
+// generated content is persisted server-side now, not in localStorage.
+let historyCache = [];
+
+window.loadHistory = async function () {
     const container = document.getElementById('history-container');
     if (!container) return;
 
-    const history = DB.getHistory(State.currentUser);
-
-    if (history.length === 0) {
-        container.innerHTML = '<div class="empty-state"><i class="ph ph-file-dashed pulse-icon"></i><p>You have not generated anything yet.</p></div>';
+    try {
+        const response = await fetch('/api/content');
+        if (!response.ok) throw new Error('Failed to load history');
+        const data = await response.json();
+        historyCache = data.data || [];
+    } catch (error) {
+        console.error('Failed to load history:', error);
+        container.innerHTML = '<div class="empty-state"><div class="pulse-icon"><i class="ph ph-warning"></i></div><h3>Could not load your history</h3><p>Please check your connection and try again.</p></div>';
         return;
     }
 
-    container.innerHTML = history.map((item, index) => {
-        const safeHtml = marked.parse(item.content).replace(/"/g, '&quot;');
-        return '<div class="history-item glass-panel" style="margin-bottom:1rem; padding: 1.5rem; cursor: pointer; border" onclick="viewHistoryItem(' + index + ')">' +
-            '<div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">' +
-            '<span style="font-size:0.85rem; font-weight:700; color:var(--clr-primary); text-transform:uppercase;">' + item.type + '</span>' +
-            '<span style="font-size:0.85rem; color:var(--clr-text-muted);">' + item.date + '</span>' +
-            '</div>' +
-            '<h4 style="margin-bottom:0.5rem; font-size:1.1rem; color: var(--clr-text);">' + item.title + '</h4>' +
-            '<p style="font-size:0.9rem; color:var(--clr-text-muted);">' + item.meta + '</p>' +
-            '<div id="hist-content-' + index + '" style="display:none;" data-raw="' + safeHtml + '" data-type="' + item.type + '"></div>' +
-            '</div>';
-    }).join('');
+    if (historyCache.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="pulse-icon"><i class="ph ph-file-dashed"></i></div><h3>Nothing here yet</h3><p>Everything you generate will be saved here automatically.</p><button class="btn btn-primary" onclick="navigateTo(\'lesson-planner\')" style="margin-top:1rem;"><i class="ph ph-magic-wand"></i> Generate a Lesson Plan</button></div>';
+    } else {
+        container.innerHTML = historyCache.map((item) => {
+            const meta = [item.classLevel, item.subject].filter(Boolean).join(' | ') || item.subject || '';
+            const dateLabel = new Date(item.createdAt).toLocaleDateString();
+            return '<div class="history-item glass-panel" style="margin-bottom:1rem; padding: 1.5rem; cursor: pointer; border" onclick="viewHistoryItem(\'' + item.id + '\')">' +
+                '<div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">' +
+                '<span style="font-size:0.85rem; font-weight:700; color:var(--clr-primary); text-transform:uppercase;">' + item.type + '</span>' +
+                '<span style="font-size:0.85rem; color:var(--clr-text-muted);">' + dateLabel + '</span>' +
+                '</div>' +
+                '<h4 style="margin-bottom:0.5rem; font-size:1.1rem; color: var(--clr-text);">' + item.title + '</h4>' +
+                '<p style="font-size:0.9rem; color:var(--clr-text-muted);">' + meta + '</p>' +
+                '</div>';
+        }).join('');
+    }
 
     // Update Dashboard Stats
     const statsLesson = document.querySelector('.stat-card:nth-child(1) .stat-value');
-    if (statsLesson) statsLesson.innerText = history.filter(h => h.type === 'Lesson Plan').length;
+    if (statsLesson) statsLesson.innerText = historyCache.filter(h => h.type === 'Lesson Plan').length;
 
     const statsExam = document.querySelector('.stat-card:nth-child(2) .stat-value');
-    if (statsExam) statsExam.innerText = history.filter(h => h.type === 'Examination').length;
+    if (statsExam) statsExam.innerText = historyCache.filter(h => h.type === 'Examination').length;
 };
 
-window.viewHistoryItem = function (index) {
-    const rawEl = document.getElementById('hist-content-' + index);
-    if (rawEl) {
+window.viewHistoryItem = function (id) {
+    const item = historyCache.find(h => h.id === id);
+    if (item) {
         navigateTo('lesson-planner');
         const container = document.getElementById('lesson-preview');
-        const type = rawEl.getAttribute('data-type');
 
-        container.innerHTML = '<div class="markdown-content" id="pdf-content-hist">' + rawEl.getAttribute('data-raw') + '</div>' +
+        if (item.type === 'Diagram' && item.content && item.content.mermaid) {
+            const diagramId = 'mermaid-hist-' + Date.now();
+            container.innerHTML = `<div id="${diagramId}" style="background: white; padding: 2rem; border-radius: var(--border-radius-sm); min-height: 200px; overflow: auto;"></div>`;
+            if (typeof mermaid !== 'undefined') {
+                mermaid.render(diagramId + '-render', item.content.mermaid).then(({ svg }) => {
+                    document.getElementById(diagramId).innerHTML = svg;
+                }).catch(() => {
+                    document.getElementById(diagramId).innerHTML = `<pre style="white-space:pre-wrap;">${item.content.mermaid}</pre>`;
+                });
+            }
+            return;
+        }
+
+        if (item.type === 'Image' && item.content && item.content.url) {
+            container.innerHTML = `<img src="${item.content.url}" style="max-width:100%; border-radius: var(--border-radius-sm);" alt="${item.title}"><div style="margin-top:1.5rem;"><button class="btn btn-primary" onclick="window.open('${item.content.url}', '_blank')"><i class="ph ph-download-simple"></i> Open Full Size</button></div>`;
+            return;
+        }
+
+        const markdown = (item.content && item.content.markdown) || '';
+        const safeHtml = typeof marked !== 'undefined' ? marked.parse(markdown) : markdown;
+
+        container.innerHTML = '<div class="markdown-content" id="pdf-content-hist">' + safeHtml + '</div>' +
             '<div style="margin-top: 2rem; display: flex; gap: 1rem; padding-top: 1rem; border-top: 1px solid var(--clr-border);">' +
-            '<button class="btn btn-primary" onclick="downloadPDF(\'pdf-content-hist\', \'' + type + '\')"><i class="ph ph-download-simple"></i> Download PDF</button>' +
+            '<button class="btn btn-primary" onclick="downloadPDF(\'pdf-content-hist\', \'' + item.type + '\')"><i class="ph ph-download-simple"></i> Download PDF</button>' +
             '<button class="btn btn-secondary glass-btn" onclick="copyToClipboard(this)"><i class="ph ph-copy"></i> Copy Text</button>' +
             '</div>';
     }

@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEVIKAPS Admin</title>
+    <meta name="description" content="NEVIKAPS admin panel — manage teacher accounts">
+    <link rel="stylesheet" href="/style.css">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+
+<body>
+    <div id="admin-view" style="display:flex; height:100vh; padding:1rem; gap:1rem;">
+        <nav class="sidebar glass-panel">
+            <div class="logo-container small">
+                <img src="/logo.png" alt="NEVIKAPS Logo" class="logo-icon-img-small" onerror="this.outerHTML='<i class=\'ph ph-shield-check logo-icon\'></i>';">
+                <h2>NEVIKAPS</h2>
+            </div>
+
+            <div class="nav-links">
+                <a href="#" class="nav-item active" data-target="admin-dashboard">
+                    <i class="ph ph-squares-four"></i> Dashboard
+                </a>
+                <a href="#" class="nav-item" data-target="admin-dashboard">
+                    <i class="ph ph-chalkboard-teacher"></i> Teachers
+                </a>
+                <a href="#" class="nav-item" data-target="admin-curriculum">
+                    <i class="ph ph-books"></i> Curriculum
+                </a>
+                <a href="#" class="nav-item" data-target="admin-settings">
+                    <i class="ph ph-gear"></i> Settings
+                </a>
+            </div>
+
+            <div class="user-profile">
+                <div class="avatar admin-avatar" id="admin-avatar-initial">A</div>
+                <div class="user-info">
+                    <span class="user-name" id="admin-username">Admin</span>
+                    <span class="user-role">Administrator</span>
+                </div>
+                <button id="admin-logout-btn" class="icon-btn" title="Logout">
+                    <i class="ph ph-sign-out"></i>
+                </button>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <header class="top-header">
+                <h2>NEVIKAPS Admin</h2>
+                <div class="admin-topbar-search">
+                    <i class="ph ph-magnifying-glass"></i>
+                    <input type="text" id="admin-search-input" placeholder="Search teachers by name or ID...">
+                </div>
+                <div class="header-actions">
+                    <div class="admin-avatar" id="admin-avatar-topbar">A</div>
+                </div>
+            </header>
+
+            <div class="content-area">
+                <!-- Dashboard / Teachers Section -->
+                <div id="admin-dashboard" class="content-section active-section">
+                    <div class="stats-grid">
+                        <div class="stat-card glass-panel stat-card-primary">
+                            <div class="stat-icon"><i class="ph ph-users-three"></i></div>
+                            <div class="stat-details">
+                                <span class="stat-value" id="stat-total">0</span>
+                                <span class="stat-label">Total Teachers</span>
+                            </div>
+                        </div>
+                        <div class="stat-card glass-panel stat-card-success">
+                            <div class="stat-icon"><i class="ph ph-check-circle"></i></div>
+                            <div class="stat-details">
+                                <span class="stat-value" id="stat-active">0</span>
+                                <span class="stat-label">Active</span>
+                            </div>
+                        </div>
+                        <div class="stat-card glass-panel stat-card-danger">
+                            <div class="stat-icon"><i class="ph ph-x-circle"></i></div>
+                            <div class="stat-details">
+                                <span class="stat-value" id="stat-inactive">0</span>
+                                <span class="stat-label">Inactive</span>
+                            </div>
+                        </div>
+                        <div class="stat-card glass-panel stat-card-teal">
+                            <div class="stat-icon"><i class="ph ph-calendar-plus"></i></div>
+                            <div class="stat-details">
+                                <span class="stat-value" id="stat-new">0</span>
+                                <span class="stat-label">New this Month</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel" style="padding:1.5rem;">
+                        <div class="table-toolbar">
+                            <h3>Teachers</h3>
+                            <div style="display:flex; gap:0.75rem;">
+                                <button class="btn btn-secondary" id="btn-view-all-content"><i class="ph ph-folder-open"></i> Teacher Content</button>
+                                <button class="btn btn-primary" id="btn-open-add-teacher"><i class="ph ph-user-plus"></i> Add Teacher</button>
+                            </div>
+                        </div>
+                        <div id="teachers-error" class="form-error hidden"></div>
+                        <div style="overflow-x:auto;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Full Name</th>
+                                        <th>Teacher ID</th>
+                                        <th>Status</th>
+                                        <th>Last Seen</th>
+                                        <th>Date Added</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="teachers-tbody">
+                                    <tr><td colspan="6" style="text-align:center; color:var(--clr-text-muted); padding:2rem;">Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="pagination">
+                            <span id="pagination-info"></span>
+                            <button class="btn btn-secondary" id="prev-page-btn"><i class="ph ph-arrow-left"></i> Prev</button>
+                            <button class="btn btn-secondary" id="next-page-btn">Next <i class="ph ph-arrow-right"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add Teacher Section -->
+                <div id="admin-add-teacher" class="content-section">
+                    <div class="form-layout form-layout-wide">
+                        <div class="form-panel glass-panel">
+                            <h3>Add Teacher</h3>
+                            <form id="add-teacher-form">
+                                <div class="input-group">
+                                    <label for="new-teacher-name">Full Name</label>
+                                    <input type="text" id="new-teacher-name" placeholder="e.g., Ms. Akenji Grace" required>
+                                </div>
+                                <div class="input-group">
+                                    <label for="new-teacher-id">Teacher ID (optional — auto-generated if left blank)</label>
+                                    <input type="text" id="new-teacher-id" placeholder="e.g., TCH-10234">
+                                </div>
+                                <div class="input-group">
+                                    <label for="new-teacher-password">Password</label>
+                                    <input type="password" id="new-teacher-password" placeholder="At least 8 characters" minlength="8" required>
+                                </div>
+                                <div class="input-group">
+                                    <label>Subjects Taught</label>
+                                    <div class="subject-checklist" id="add-teacher-subjects"></div>
+                                </div>
+                                <div id="add-teacher-error" class="form-error hidden"></div>
+                                <div id="add-teacher-success" class="form-success hidden"></div>
+                                <div class="form-actions" style="position:static;">
+                                    <button type="submit" class="btn btn-primary" id="btn-add-teacher">
+                                        <i class="ph ph-user-plus"></i> Create Teacher Account
+                                    </button>
+                                </div>
+                            </form>
+                            <div id="new-credential-box" class="credential-box hidden">
+                                <span id="new-credential-text"></span>
+                                <button class="btn btn-secondary" onclick="navigator.clipboard.writeText(document.getElementById('new-credential-text').innerText)"><i class="ph ph-copy"></i></button>
+                            </div>
+                        </div>
+                        <div class="preview-panel glass-panel">
+                            <div class="empty-state">
+                                <div class="pulse-icon"><i class="ph ph-user-plus"></i></div>
+                                <h3>Only Admins Create Accounts</h3>
+                                <p>Teachers cannot self-register and can never change their own Teacher ID or password. Enter a full name, a password, and the subjects they teach — hand the Teacher ID and password to the teacher. You can view or change either at any time from the Teachers roster.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Curriculum Section -->
+                <div id="admin-curriculum" class="content-section">
+                    <div class="glass-panel" style="padding:1.5rem; margin-bottom:1.5rem;">
+                        <h3>Upload Curriculum PDF</h3>
+                        <form id="curriculum-upload-form">
+                            <div class="form-grid">
+                                <div class="input-group">
+                                    <label for="curriculum-school-year">School Year</label>
+                                    <input type="text" id="curriculum-school-year" placeholder="e.g., 2025/2026" required>
+                                </div>
+                                <div class="input-group">
+                                    <label for="curriculum-title">Title</label>
+                                    <input type="text" id="curriculum-title" placeholder="e.g., National Primary Curriculum" required>
+                                </div>
+                                <div class="input-group full-width">
+                                    <label for="curriculum-file">Curriculum PDF</label>
+                                    <input type="file" id="curriculum-file" accept=".pdf" required style="padding: 1rem; border: 2px dashed var(--clr-border); background: rgba(0,0,0,0.02); text-align: center; cursor: pointer; border-radius: var(--border-radius-sm);">
+                                </div>
+                            </div>
+                            <div id="curriculum-upload-error" class="form-error hidden"></div>
+                            <div id="curriculum-upload-success" class="form-success hidden"></div>
+                            <div class="form-actions" style="position:static;">
+                                <button type="submit" class="btn btn-primary" id="btn-upload-curriculum">
+                                    <i class="ph ph-upload-simple"></i> Upload &amp; Parse Curriculum
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="glass-panel" style="padding:1.5rem;">
+                        <div class="table-toolbar"><h3>Curricula</h3></div>
+                        <div id="curricula-error" class="form-error hidden"></div>
+                        <div style="overflow-x:auto;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>School Year</th>
+                                        <th>Title</th>
+                                        <th>Status</th>
+                                        <th>Entries</th>
+                                        <th>Uploaded</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="curricula-tbody">
+                                    <tr><td colspan="6" style="text-align:center; color:var(--clr-text-muted); padding:2rem;">Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel hidden" id="curriculum-entries-panel" style="padding:1.5rem; margin-top:1.5rem;">
+                        <div class="table-toolbar">
+                            <h3 id="curriculum-entries-title">Entries</h3>
+                            <button class="btn btn-primary" id="btn-add-entry"><i class="ph ph-plus"></i> Add Entry</button>
+                        </div>
+                        <div style="overflow-x:auto;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Class</th>
+                                        <th>Subject</th>
+                                        <th>Term</th>
+                                        <th>Month</th>
+                                        <th>Theme</th>
+                                        <th>Topics</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="curriculum-entries-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Teacher Content Section (read-only, across all teachers) -->
+                <div id="admin-content" class="content-section">
+                    <div class="glass-panel" style="padding:1.5rem;">
+                        <div class="table-toolbar">
+                            <h3 id="content-view-title">Teacher Content</h3>
+                            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                                <select id="content-teacher-filter"><option value="">All Teachers</option></select>
+                                <select id="content-type-filter">
+                                    <option value="">All Types</option>
+                                    <option value="Lesson Plan">Lesson Plan</option>
+                                    <option value="Monthly Plan">Monthly Plan</option>
+                                    <option value="Examination">Examination</option>
+                                    <option value="Nursery Activity Sheet">Nursery Activity Sheet</option>
+                                    <option value="Worksheet">Worksheet</option>
+                                    <option value="Report Card">Report Card</option>
+                                    <option value="Diagram">Diagram</option>
+                                    <option value="Image">Image</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="content-error" class="form-error hidden"></div>
+                        <div style="overflow-x:auto;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Teacher</th>
+                                        <th>Type</th>
+                                        <th>Title</th>
+                                        <th>Class / Subject</th>
+                                        <th>Date</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="content-tbody">
+                                    <tr><td colspan="6" style="text-align:center; color:var(--clr-text-muted); padding:2rem;">Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="pagination">
+                            <span id="content-pagination-info"></span>
+                            <button class="btn btn-secondary" id="content-prev-page-btn"><i class="ph ph-arrow-left"></i> Prev</button>
+                            <button class="btn btn-secondary" id="content-next-page-btn">Next <i class="ph ph-arrow-right"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Section -->
+                <div id="admin-settings" class="content-section">
+                    <div class="settings-grid">
+                        <div class="glass-panel settings-card">
+                            <h3>Change My Password</h3>
+                            <form id="admin-change-password-form">
+                                <div class="input-group">
+                                    <label for="admin-new-password">New Password</label>
+                                    <input type="password" id="admin-new-password" placeholder="At least 8 characters" minlength="8" required>
+                                </div>
+                                <div class="input-group">
+                                    <label for="admin-confirm-password">Confirm Password</label>
+                                    <input type="password" id="admin-confirm-password" placeholder="Re-enter new password" minlength="8" required>
+                                </div>
+                                <div id="admin-settings-error" class="form-error hidden"></div>
+                                <div id="admin-settings-success" class="form-success hidden"></div>
+                                <div class="form-actions" style="position:static;">
+                                    <button type="submit" class="btn btn-primary" id="btn-admin-change-password">
+                                        <i class="ph ph-check"></i> Update Password
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="glass-panel settings-card">
+                            <h3>Admin Accounts</h3>
+                            <form id="add-admin-form">
+                                <div class="input-group">
+                                    <label for="new-admin-username">Username</label>
+                                    <input type="text" id="new-admin-username" placeholder="e.g., headteacher" required>
+                                </div>
+                                <div class="input-group">
+                                    <label for="new-admin-password">Password</label>
+                                    <input type="password" id="new-admin-password" placeholder="At least 8 characters" minlength="8" required>
+                                </div>
+                                <div id="add-admin-error" class="form-error hidden"></div>
+                                <div id="add-admin-success" class="form-success hidden"></div>
+                                <div class="form-actions" style="position:static;">
+                                    <button type="submit" class="btn btn-primary" id="btn-add-admin">
+                                        <i class="ph ph-user-plus"></i> Create Admin
+                                    </button>
+                                </div>
+                            </form>
+                            <div class="settings-list-wrap">
+                                <table class="data-table">
+                                    <thead><tr><th>Username</th><th>Added</th></tr></thead>
+                                    <tbody id="admins-tbody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="glass-panel settings-card">
+                            <h3>Subjects</h3>
+                            <form id="add-subject-form">
+                                <div class="input-group">
+                                    <label for="new-subject-name">Subject Name</label>
+                                    <input type="text" id="new-subject-name" placeholder="e.g., Spanish Language" required>
+                                </div>
+                                <div class="input-group">
+                                    <label for="new-subject-level">Level</label>
+                                    <select id="new-subject-level" required>
+                                        <option value="General">General (any class)</option>
+                                        <option value="Nursery">Nursery (any nursery class)</option>
+                                        <option value="Nursery 1">Nursery 1</option>
+                                        <option value="Nursery 2">Nursery 2</option>
+                                        <option value="Primary">Primary (any primary class)</option>
+                                        <option value="Primary 1">Primary 1</option>
+                                        <option value="Primary 2">Primary 2</option>
+                                        <option value="Primary 3">Primary 3</option>
+                                        <option value="Primary 4">Primary 4</option>
+                                        <option value="Primary 5">Primary 5</option>
+                                        <option value="Primary 6">Primary 6</option>
+                                    </select>
+                                </div>
+                                <div id="add-subject-error" class="form-error hidden"></div>
+                                <div id="add-subject-success" class="form-success hidden"></div>
+                                <div class="form-actions" style="position:static;">
+                                    <button type="submit" class="btn btn-primary" id="btn-add-subject">
+                                        <i class="ph ph-plus"></i> Add Subject
+                                    </button>
+                                </div>
+                            </form>
+                            <div class="settings-list-wrap">
+                                <table class="data-table">
+                                    <thead><tr><th>Name</th><th>Level</th><th></th></tr></thead>
+                                    <tbody id="subjects-tbody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Content viewer modal (read-only) -->
+    <div id="content-view-modal" class="overlay hidden">
+        <div class="loading-card glass-panel" style="max-width:800px; max-height:85vh; overflow-y:auto; text-align:left; align-items:stretch;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h3 id="content-view-modal-title">Item</h3>
+                <button class="icon-btn" id="content-view-modal-close"><i class="ph ph-x"></i></button>
+            </div>
+            <div id="content-view-modal-body"></div>
+        </div>
+    </div>
+
+    <!-- Edit Teacher modal: view/change credentials and subjects -->
+    <div id="edit-teacher-modal" class="overlay hidden">
+        <div class="loading-card glass-panel" style="max-width:520px; max-height:85vh; overflow-y:auto; text-align:left; align-items:stretch;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h3 id="edit-teacher-modal-title">Edit Teacher</h3>
+                <button class="icon-btn" id="edit-teacher-modal-close"><i class="ph ph-x"></i></button>
+            </div>
+            <form id="edit-teacher-form">
+                <div class="input-group">
+                    <label for="edit-teacher-name">Full Name</label>
+                    <input type="text" id="edit-teacher-name" required>
+                </div>
+                <div class="input-group">
+                    <label for="edit-teacher-id">Teacher ID</label>
+                    <input type="text" id="edit-teacher-id" required>
+                </div>
+                <div class="input-group">
+                    <label for="edit-teacher-password">Password <span style="font-weight:400; color:var(--clr-text-muted);">(current login password — visible to admin only)</span></label>
+                    <input type="password" id="edit-teacher-password" required>
+                </div>
+                <div class="input-group">
+                    <label>Subjects Taught</label>
+                    <div class="subject-checklist" id="edit-teacher-subjects"></div>
+                </div>
+                <div id="edit-teacher-error" class="form-error hidden"></div>
+                <div id="edit-teacher-success" class="form-success hidden"></div>
+                <div class="form-actions" style="position:static;">
+                    <button type="submit" class="btn btn-primary" id="btn-save-edit-teacher">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Curriculum entry add/edit modal -->
+    <div id="entry-modal" class="overlay hidden">
+        <div class="loading-card glass-panel" style="max-width:520px; max-height:85vh; overflow-y:auto; text-align:left; align-items:stretch;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h3 id="entry-modal-title">Add Entry</h3>
+                <button class="icon-btn" id="entry-modal-close"><i class="ph ph-x"></i></button>
+            </div>
+            <form id="entry-form">
+                <div class="input-group">
+                    <label for="entry-class-level">Class / Grade</label>
+                    <input type="text" id="entry-class-level" placeholder="e.g., Primary 4" required>
+                </div>
+                <div class="input-group">
+                    <label for="entry-subject">Subject</label>
+                    <input type="text" id="entry-subject" placeholder="e.g., Mathematics" required>
+                </div>
+                <div class="input-group">
+                    <label for="entry-term">Term</label>
+                    <input type="text" id="entry-term" placeholder="e.g., First Term">
+                </div>
+                <div class="input-group">
+                    <label for="entry-month">Month</label>
+                    <input type="text" id="entry-month" placeholder="e.g., October">
+                </div>
+                <div class="input-group">
+                    <label for="entry-theme">Theme / Strand</label>
+                    <input type="text" id="entry-theme" placeholder="e.g., Numbers and Operations">
+                </div>
+                <div class="input-group">
+                    <label for="entry-topics">Topics (comma-separated)</label>
+                    <input type="text" id="entry-topics" placeholder="e.g., Addition, Subtraction, Word Problems">
+                </div>
+                <div id="entry-form-error" class="form-error hidden"></div>
+                <div class="form-actions" style="position:static;">
+                    <button type="submit" class="btn btn-primary" id="btn-save-entry">Save Entry</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/password-toggle.js"></script>
+    <script src="/admin/admin.js"></script>
+</body>
+
+</html>

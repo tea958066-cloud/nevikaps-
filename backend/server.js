@@ -1,11 +1,22 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const Anthropic = require('@anthropic-ai/sdk');
 const multer = require('multer');
+const { requireAuth, verifySession } = require('./lib/auth');
+const { saveGeneratedContent, touchLastSeen } = require('./lib/content');
+const authRoutes = require('./routes/auth');
+const adminRoutes = require('./routes/admin');
+const adminAdminsRoutes = require('./routes/admin-admins');
+const adminCurriculumRoutes = require('./routes/admin-curriculum');
+const adminContentRoutes = require('./routes/admin-content');
+const adminSubjectsRoutes = require('./routes/admin-subjects');
+const contentRoutes = require('./routes/content');
+const curriculumRoutes = require('./routes/curriculum');
+const subjectsRoutes = require('./routes/subjects');
 
 // Setup file upload (use system temp dir so it works locally and on Vercel)
 const upload = multer({ dest: os.tmpdir() });
@@ -15,22 +26,41 @@ const port = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+app.use(cookieParser());
+
+app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/admin/admins', adminAdminsRoutes);
+app.use('/api/admin/curriculum', adminCurriculumRoutes);
+app.use('/api/admin/content', adminContentRoutes);
+app.use('/api/admin/subjects', adminSubjectsRoutes);
+app.use('/api/content', requireAuth, contentRoutes);
+app.use('/api/curriculum', requireAuth, curriculumRoutes);
+app.use('/api/subjects', requireAuth, subjectsRoutes);
+
+// Gate the admin SPA shell itself: only a logged-in admin can load the page.
+// Everyone else is bounced to the teacher login screen.
+app.get(['/admin', '/admin/'], (req, res) => {
+    const token = req.cookies ? req.cookies['nevikaps_session'] : null;
+    const session = token ? verifySession(token) : null;
+    if (!session || session.role !== 'admin') {
+        return res.redirect('/');
+    }
+    res.sendFile(path.join(__dirname, 'public', 'admin', 'index.html'));
+});
+
+// Block direct static access to the admin shell HTML so it can't bypass the
+// auth gate above; route it back through the gated /admin handler instead.
+app.get('/admin/index.html', (req, res) => res.redirect('/admin'));
 
 // Serve frontend static files
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Load system prompt on startup
-const systemPromptPath = path.join(__dirname, 'system_prompt.md');
-let systemPrompt = '';
-try {
-    systemPrompt = fs.readFileSync(systemPromptPath, 'utf8');
-} catch (error) {
-    console.error('Error reading system_prompt.md:', error.message);
-}
+// Every generator/upload endpoint requires a logged-in teacher or admin.
+app.use(['/api/generate', '/api/upload'], requireAuth);
 
-// Initialize Anthropic Client
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-const model = 'claude-opus-4-6';
+// Anthropic client + system prompt (shared with the admin curriculum parser)
+const { client, model, systemPrompt } = require('./lib/ai');
 
 app.get('/api/health', (req, res) => {
     res.json({ status: 'NEVIKAPS Claude AI backend is running optimally.' });
@@ -123,13 +153,27 @@ Format the results so the system can store them as structured curriculum data st
 });
 
 // Image generation endpoint (uses Pollinations AI — no API change needed)
-app.get('/api/generate/image', (req, res) => {
+app.get('/api/generate/image', async (req, res) => {
     const prompt = req.query.prompt;
     if (!prompt) {
         return res.status(400).json({ error: 'Prompt is required' });
     }
     const seed = Math.floor(Math.random() * 1000000);
     const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?seed=${seed}&width=1024&height=512&nologo=true`;
+
+    // Only persist a content record for standalone Image Studio requests —
+    // this endpoint is also called internally to illustrate other generators,
+    // and we don't want one lesson/exam generation to spawn a duplicate record.
+    if (req.query.standalone === 'true' && req.user.role === 'teacher') {
+        await saveGeneratedContent({
+            teacherId: req.user.sub,
+            type: 'Image',
+            title: prompt.slice(0, 120),
+            content: { url: imageUrl, prompt }
+        });
+        await touchLastSeen(req.user.sub);
+    }
+
     res.json({ url: imageUrl });
 });
 
@@ -302,7 +346,21 @@ ${req.body.custom ? `\n---\n\n**Additional Teacher Instructions:** ${req.body.cu
             messages: [{ role: 'user', content: userPrompt }]
         });
 
-        res.json({ result: response.content[0].text });
+        const resultText = response.content[0].text;
+
+        if (req.user.role === 'teacher') {
+            await saveGeneratedContent({
+                teacherId: req.user.sub,
+                type: 'Lesson Plan',
+                title: topic,
+                subject,
+                classLevel: className,
+                content: { markdown: resultText }
+            });
+            await touchLastSeen(req.user.sub);
+        }
+
+        res.json({ result: resultText });
     } catch (error) {
         console.error('Lesson Plan Error:', error);
         if (error.status === 429 || error.status === 403) {
@@ -484,7 +542,21 @@ ${matchSection}${wordBankSection}
             messages: [{ role: 'user', content: userPrompt }]
         });
 
-        res.json({ result: response.content[0].text });
+        const resultText = response.content[0].text;
+
+        if (req.user.role === 'teacher') {
+            await saveGeneratedContent({
+                teacherId: req.user.sub,
+                type: isNursery ? 'Nursery Activity Sheet' : 'Examination',
+                title: topic,
+                subject,
+                classLevel: className,
+                content: { markdown: resultText }
+            });
+            await touchLastSeen(req.user.sub);
+        }
+
+        res.json({ result: resultText });
     } catch (error) {
         console.error('Exam Error:', error);
         if (error.status === 429 || error.status === 403) {
@@ -528,7 +600,21 @@ Provide engaging, age-appropriate questions related to the topic. Output cleanly
             messages: [{ role: 'user', content: userPrompt }]
         });
 
-        res.json({ result: response.content[0].text });
+        const resultText = response.content[0].text;
+
+        if (req.user.role === 'teacher') {
+            await saveGeneratedContent({
+                teacherId: req.user.sub,
+                type: 'Worksheet',
+                title: topic,
+                subject,
+                classLevel: className,
+                content: { markdown: resultText }
+            });
+            await touchLastSeen(req.user.sub);
+        }
+
+        res.json({ result: resultText });
     } catch (error) {
         console.error('Worksheet Error:', error);
         if (error.status === 429 || error.status === 403) {
@@ -570,7 +656,20 @@ Write a professional, encouraging paragraph describing the student's progress, h
             messages: [{ role: 'user', content: userPrompt }]
         });
 
-        res.json({ result: response.content[0].text });
+        const resultText = response.content[0].text;
+
+        if (req.user.role === 'teacher') {
+            await saveGeneratedContent({
+                teacherId: req.user.sub,
+                type: 'Report Card',
+                title: name,
+                subject,
+                content: { markdown: resultText }
+            });
+            await touchLastSeen(req.user.sub);
+        }
+
+        res.json({ result: resultText });
     } catch (error) {
         console.error('Report Card Error:', error);
         if (error.status === 429 || error.status === 403) {
@@ -587,7 +686,7 @@ app.post('/api/generate/monthly-lesson', async (req, res) => {
     try {
         const {
             subject, class: className, term, month, year,
-            weeks, lessonsPerWeek, theme, topics, custom
+            weeks, lessonsPerWeek, theme, topics, custom, curriculumSourced
         } = req.body;
 
         const structuredInput = JSON.stringify({
@@ -599,12 +698,17 @@ app.post('/api/generate/monthly-lesson', async (req, res) => {
             customInstructions: custom || 'None'
         }, null, 2);
 
+        const curriculumScopeRule = curriculumSourced
+            ? `\n\nCURRICULUM SCOPE RULE: The Main Theme and Topics to Cover above were pulled directly from the official admin-managed school curriculum for this class, subject, term, and month. Treat them as the authoritative scope for the month — do not invent additional topics beyond reasonable elaboration of what is listed, and do not omit any of the listed topics.`
+            : '';
+
         const userPrompt = `Create a complete, print-ready MONTHLY LESSON PLAN for an entire school month.
 
 Teacher Input:
 \`\`\`json
 ${structuredInput}
 \`\`\`
+${curriculumScopeRule}
 
 Follow the Cameroon Competency Based Approach (CBA). Do NOT skip any section.
 
@@ -709,7 +813,21 @@ ${custom ? `\n---\n\n**Additional Teacher Instructions:** ${custom}` : ''}`;
             messages: [{ role: 'user', content: userPrompt }]
         });
 
-        res.json({ result: response.content[0].text });
+        const resultText = response.content[0].text;
+
+        if (req.user.role === 'teacher') {
+            await saveGeneratedContent({
+                teacherId: req.user.sub,
+                type: 'Monthly Plan',
+                title: `${month} ${year} — ${subject}`,
+                subject,
+                classLevel: className,
+                content: { markdown: resultText }
+            });
+            await touchLastSeen(req.user.sub);
+        }
+
+        res.json({ result: resultText });
     } catch (error) {
         console.error('Monthly Lesson Plan Error:', error);
         if (error.status === 429 || error.status === 403) {
@@ -758,6 +876,18 @@ Supported diagram types and when to use them:
         let mermaidCode = response.content[0].text.trim();
         // Strip markdown fences if model wrapped it anyway
         mermaidCode = mermaidCode.replace(/^```(?:mermaid)?\n?/i, '').replace(/\n?```$/i, '').trim();
+
+        if (req.user.role === 'teacher') {
+            await saveGeneratedContent({
+                teacherId: req.user.sub,
+                type: 'Diagram',
+                title: topic,
+                subject,
+                classLevel: className,
+                content: { mermaid: mermaidCode, dtype }
+            });
+            await touchLastSeen(req.user.sub);
+        }
 
         res.json({ result: mermaidCode });
     } catch (error) {
