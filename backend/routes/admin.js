@@ -15,10 +15,6 @@ function generateTeacherId() {
     return `TCH-${digits}`;
 }
 
-function generateTempPassword() {
-    return crypto.randomBytes(6).toString('base64').replace(/[^a-zA-Z0-9]/g, '').slice(0, 10);
-}
-
 function toPublicTeacher(row) {
     return {
         id: row.id,
@@ -259,30 +255,6 @@ router.patch('/teachers/:id', async (req, res) => {
     } catch (error) {
         console.error('Update teacher error:', error);
         res.status(500).json({ error: 'Failed to update teacher.' });
-    }
-});
-
-// POST /api/admin/teachers/:id/reset-password — quick one-click reset to a
-// fresh random password (shown once to the admin to hand to the teacher).
-router.post('/teachers/:id/reset-password', async (req, res) => {
-    try {
-        const tempPassword = generateTempPassword();
-        const passwordEncrypted = encryptSecret(tempPassword);
-
-        const { data, error } = await supabaseAdmin
-            .from('teachers')
-            .update({ password_encrypted: passwordEncrypted })
-            .eq('id', req.params.id)
-            .select()
-            .single();
-
-        if (error) throw error;
-        if (!data) return res.status(404).json({ error: 'Teacher not found.' });
-
-        res.json({ teacher: toPublicTeacher(data), tempPassword });
-    } catch (error) {
-        console.error('Reset password error:', error);
-        res.status(500).json({ error: 'Failed to reset password.' });
     }
 });
 

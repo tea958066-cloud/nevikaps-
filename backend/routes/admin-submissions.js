@@ -1,6 +1,7 @@
 const express = require('express');
 const { supabaseAdmin } = require('../lib/supabase');
 const { requireAdmin } = require('../lib/auth');
+const { downloadSubmissionFile } = require('../lib/storage');
 
 const router = express.Router();
 router.use(requireAdmin);
@@ -14,6 +15,8 @@ function toPublicSubmission(row) {
         classLevel: row.class_level,
         studentName: row.student_name,
         content: row.content,
+        fileName: row.file_name,
+        fileMime: row.file_mime,
         status: row.status,
         adminFeedback: row.admin_feedback,
         reviewedAt: row.reviewed_at,
@@ -73,8 +76,10 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// GET /api/admin/submissions/:id/download — plain-text file so the admin can
-// save the exam (or comment) locally to verify it offline.
+// GET /api/admin/submissions/:id/download — streams back the teacher's
+// actual uploaded document (Word/PDF) with its original filename. Every
+// submission has a file; the plain-text fallback below only covers a row
+// whose file object is somehow missing from storage.
 router.get('/:id/download', async (req, res) => {
     try {
         const { data, error } = await supabaseAdmin
@@ -84,6 +89,14 @@ router.get('/:id/download', async (req, res) => {
             .maybeSingle();
         if (error) throw error;
         if (!data) return res.status(404).json({ error: 'Submission not found.' });
+
+        if (data.file_path) {
+            const fileBuffer = await downloadSubmissionFile(data.file_path);
+            const downloadName = data.file_name || `NEVIKAPS_exam_${data.id}`;
+            res.setHeader('Content-Type', data.file_mime || 'application/octet-stream');
+            res.setHeader('Content-Disposition', `attachment; filename="${downloadName.replace(/"/g, '')}"`);
+            return res.send(fileBuffer);
+        }
 
         const teacherLabel = data.teachers ? `${data.teachers.full_name} (${data.teachers.teacher_id})` : 'Unknown teacher';
         const header = [
@@ -102,7 +115,7 @@ router.get('/:id/download', async (req, res) => {
         const safeName = (data.title || 'submission').replace(/[^a-zA-Z0-9-_]+/g, '_').slice(0, 60);
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
         res.setHeader('Content-Disposition', `attachment; filename="NEVIKAPS_${data.type}_${safeName}.txt"`);
-        res.send(header + data.content);
+        res.send(header + (data.content || ''));
     } catch (error) {
         console.error('Download submission error:', error);
         res.status(500).json({ error: 'Failed to download this submission.' });

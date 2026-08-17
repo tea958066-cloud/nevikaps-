@@ -659,8 +659,10 @@ input:focus, select:focus {
 .content-area {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     position: relative;
-    padding-right: 0.5rem;
+    padding: 0 0.5rem 3rem 0;
+    scroll-behavior: smooth;
 }
 
 .content-area::-webkit-scrollbar {
@@ -670,10 +672,22 @@ input:focus, select:focus {
     background: var(--clr-border);
     border-radius: 10px;
 }
+.content-area::-webkit-scrollbar-thumb:hover {
+    background: var(--clr-text-muted);
+}
 
 .content-section {
     display: none;
     animation: fadeIn 0.4s ease;
+}
+
+/* Every direct panel in a section gets breathing room below it so the last
+   card/table in a scrolled section never touches the viewport edge. */
+.content-section > * {
+    margin-bottom: 1.5rem;
+}
+.content-section > *:last-child {
+    margin-bottom: 0;
 }
 
 .content-section.active-section {
@@ -820,13 +834,16 @@ input:focus, select:focus {
 
 .form-panel {
     padding: 1.5rem;
+    padding-bottom: 2rem;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
+    scroll-behavior: smooth;
 }
 
 .form-panel::-webkit-scrollbar { width: 4px; }
 .form-panel::-webkit-scrollbar-thumb { background: var(--clr-border); border-radius: 10px; }
+.form-panel::-webkit-scrollbar-thumb:hover { background: var(--clr-text-muted); }
 
 .form-panel h3 {
     margin-bottom: 1.5rem;
@@ -867,13 +884,16 @@ input:focus, select:focus {
 
 .preview-panel {
     padding: 2.5rem 3rem;
+    padding-bottom: 3rem;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
+    scroll-behavior: smooth;
 }
 
 .preview-panel::-webkit-scrollbar { width: 6px; }
 .preview-panel::-webkit-scrollbar-thumb { background: var(--clr-border); border-radius: 10px; }
+.preview-panel::-webkit-scrollbar-thumb:hover { background: var(--clr-text-muted); }
 
 .empty-state {
     flex: 1;
@@ -1033,8 +1053,20 @@ input:focus, select:focus {
     vertical-align: middle;
 }
 
+.data-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.data-table tbody tr:nth-child(even) {
+    background: rgba(0, 0, 0, 0.015);
+}
+
 .data-table tbody tr:hover {
-    background: var(--clr-bg);
+    background: var(--clr-primary-glow);
+}
+
+.dark-theme .data-table tbody tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.02);
 }
 
 .table-actions {

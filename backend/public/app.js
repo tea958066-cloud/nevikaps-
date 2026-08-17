@@ -531,6 +531,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const titleInput = document.getElementById('submission-title');
         const studentGroup = document.getElementById('submission-student-group');
         const studentInput = document.getElementById('submission-student');
+        const fileLabel = document.getElementById('submission-file-label');
+        const fileInput = document.getElementById('submission-file');
+        const fileHint = document.getElementById('submission-file-hint');
         const contentLabel = document.getElementById('submission-content-label');
         const contentInput = document.getElementById('submission-content');
 
@@ -547,16 +550,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 : 'e.g., End of Term Comment — John Doe';
 
             studentGroup.classList.toggle('hidden', isExam);
-            studentInput.required = !isExam;
 
-            contentLabel.innerText = isExam ? 'Paste the Exam (Markdown or plain text)' : 'Comment';
-            contentInput.placeholder = isExam
-                ? 'Paste the exam content here — you can copy it from a generated exam in History, or write it directly.'
-                : 'Write your comment about this student\'s performance and behavior.';
+            fileLabel.innerText = isExam
+                ? 'Upload Exam Document (.doc, .docx, or .pdf)'
+                : 'Upload Comments Document (.doc, .docx, or .pdf)';
+            fileHint.innerText = isExam
+                ? 'Upload the exam exactly as you typed it in Word — the admin downloads and opens the original file.'
+                : 'Upload your student comments exactly as you typed them in Word — one file can cover a whole class.';
+
+            contentLabel.innerText = 'Additional Notes (optional)';
+            contentInput.rows = 3;
+            contentInput.required = false;
+            contentInput.placeholder = 'Anything the admin should know about this file (optional).';
         }
 
         btnExamType.addEventListener('click', () => setSubmissionType('exam'));
         btnCommentType.addEventListener('click', () => setSubmissionType('comment'));
+        setSubmissionType('exam');
 
         submissionForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -565,24 +575,28 @@ document.addEventListener('DOMContentLoaded', () => {
             errorEl.classList.add('hidden');
             successEl.classList.add('hidden');
 
-            const payload = {
-                type: submissionType,
-                title: titleInput.value.trim(),
-                subject: document.getElementById('submission-subject').value,
-                classLevel: document.getElementById('submission-class').value,
-                studentName: submissionType === 'comment' ? studentInput.value.trim() : undefined,
-                content: contentInput.value.trim()
-            };
+            if (!fileInput.files.length) {
+                errorEl.textContent = 'Please attach the document.';
+                errorEl.classList.remove('hidden');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('type', submissionType);
+            formData.append('title', titleInput.value.trim());
+            formData.append('subject', document.getElementById('submission-subject').value);
+            formData.append('classLevel', document.getElementById('submission-class').value);
+            formData.append('content', contentInput.value.trim());
+            formData.append('file', fileInput.files[0]);
+            if (submissionType === 'comment') {
+                formData.append('studentName', studentInput.value.trim());
+            }
 
             const btn = document.getElementById('btn-submit-work');
             btn.disabled = true;
 
             try {
-                const response = await fetch('/api/submissions', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+                const response = await fetch('/api/submissions', { method: 'POST', body: formData });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error || 'Failed to submit.');
 
@@ -1218,6 +1232,9 @@ window.loadSubmissions = async function () {
     container.innerHTML = submissionsCache.map((item) => {
         const meta = [item.classLevel, item.subject, item.studentName].filter(Boolean).join(' | ');
         const dateLabel = new Date(item.createdAt).toLocaleDateString();
+        const fileLine = item.fileName
+            ? '<p style="font-size:0.85rem; color:var(--clr-text-muted); margin-top:0.4rem;"><i class="ph ph-file-doc"></i> ' + escapeHtmlApp(item.fileName) + '</p>'
+            : '';
         const feedback = item.adminFeedback
             ? '<p style="font-size:0.85rem; color:var(--clr-text-muted); margin-top:0.5rem;"><strong>Admin feedback:</strong> ' + escapeHtmlApp(item.adminFeedback) + '</p>'
             : '';
@@ -1231,7 +1248,7 @@ window.loadSubmissions = async function () {
             '</div>' +
             '<h4 style="margin-bottom:0.5rem; font-size:1.1rem; color: var(--clr-text);">' + escapeHtmlApp(item.title) + '</h4>' +
             '<p style="font-size:0.9rem; color:var(--clr-text-muted);">' + escapeHtmlApp(meta) + ' — ' + dateLabel + '</p>' +
-            feedback + withdrawBtn +
+            fileLine + feedback + withdrawBtn +
             '</div>';
     }).join('');
 };

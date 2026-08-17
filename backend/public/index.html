@@ -232,7 +232,7 @@
                                         <input type="text" id="submission-title" placeholder="e.g., Second Term Mathematics Exam — Fractions" required>
                                     </div>
                                     <div class="input-group full-width hidden" id="submission-student-group">
-                                        <label for="submission-student">Student Name</label>
+                                        <label for="submission-student">Student Name <span style="font-weight:400; color:var(--clr-text-muted);">(optional — leave blank if this file covers multiple students)</span></label>
                                         <input type="text" id="submission-student" placeholder="e.g., John Doe">
                                     </div>
                                     <div class="input-group">
@@ -255,9 +255,15 @@
                                             <option value="Primary 6">Primary 6</option>
                                         </select>
                                     </div>
+                                    <div class="input-group full-width" id="submission-file-group">
+                                        <label for="submission-file" id="submission-file-label">Upload Exam Document (.doc, .docx, or .pdf)</label>
+                                        <input type="file" id="submission-file" accept=".doc,.docx,.pdf" required
+                                            style="padding: 1rem; border: 2px dashed var(--clr-border); background: rgba(0,0,0,0.02); text-align: center; cursor: pointer; border-radius: var(--border-radius-sm);">
+                                        <p id="submission-file-hint" style="font-size:0.82rem; color:var(--clr-text-muted); margin-top:0.25rem;">Upload the exam exactly as you typed it in Word — the admin downloads and opens the original file.</p>
+                                    </div>
                                     <div class="input-group full-width" id="submission-content-group">
-                                        <label for="submission-content" id="submission-content-label">Paste the Exam (Markdown or plain text)</label>
-                                        <textarea id="submission-content" rows="10" placeholder="Paste the exam content here — you can copy it from a generated exam in History, or write it directly." required
+                                        <label for="submission-content" id="submission-content-label">Comment</label>
+                                        <textarea id="submission-content" rows="8" placeholder="Write your comment about this student's performance and behavior." required
                                             style="width: 100%; padding: 0.85rem; border-radius: var(--border-radius-sm); border: 1px solid var(--clr-border); background: rgba(0,0,0,0.02); resize: vertical; font-family: 'Times New Roman', Times, serif;"></textarea>
                                     </div>
                                 </div>

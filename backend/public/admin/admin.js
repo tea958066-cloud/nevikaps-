@@ -157,7 +157,7 @@ async function loadTeachers() {
                         <button class="btn ${t.isActive ? 'btn-danger' : 'btn-success'}" data-action="toggle" data-id="${t.id}" data-active="${t.isActive}">
                             ${t.isActive ? 'Deactivate' : 'Activate'}
                         </button>
-                        <button class="btn btn-secondary" data-action="reset" data-id="${t.id}" data-name="${escapeHtml(t.fullName)}">Reset Password</button>
+                        <button class="btn btn-secondary" data-action="reset" data-id="${t.id}" data-name="${escapeHtml(t.fullName)}">Change Password</button>
                         <button class="btn btn-secondary" data-action="view" data-id="${t.id}" data-name="${escapeHtml(t.fullName)}">View Work</button>
                         <button class="btn btn-danger" data-action="delete" data-id="${t.id}" data-name="${escapeHtml(t.fullName)}">Delete</button>
                     </td>
@@ -228,9 +228,17 @@ document.getElementById('teachers-tbody').addEventListener('click', async (e) =>
             });
             await Promise.all([loadTeachers(), loadStats()]);
         } else if (action === 'reset') {
-            if (!confirm(`Reset the password for ${name}?`)) return;
-            const result = await apiRequest(`/api/admin/teachers/${id}/reset-password`, { method: 'POST' });
-            alert(`New temporary password for ${name}:\n\n${result.tempPassword}\n\nThey will be asked to set their own password on next login.`);
+            const newPassword = prompt(`Enter a new password for ${name} (at least 8 characters):`);
+            if (newPassword === null) return;
+            if (newPassword.length < 8) {
+                alert('Password must be at least 8 characters.');
+                return;
+            }
+            await apiRequest(`/api/admin/teachers/${id}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ password: newPassword })
+            });
+            alert(`Password updated for ${name}.`);
         } else if (action === 'delete') {
             if (!confirm(`Delete ${name}'s account permanently? This cannot be undone.`)) return;
             await apiRequest(`/api/admin/teachers/${id}`, { method: 'DELETE' });
@@ -688,11 +696,29 @@ async function openSubmissionModal(id) {
             formatDate(item.createdAt)
         ].filter(Boolean).join(' — ');
 
-        const contentHtml = typeof marked !== 'undefined' ? marked.parse(item.content) : escapeHtml(item.content);
+        const fileCard = item.fileName ? `
+            <div class="glass-panel" style="padding:1rem 1.25rem; display:flex; align-items:center; gap:0.85rem; margin-bottom:1rem;">
+                <i class="ph ph-file-doc" style="font-size:1.8rem; color:var(--clr-primary);"></i>
+                <div style="flex:1; min-width:0;">
+                    <div style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(item.fileName)}</div>
+                    <div style="font-size:0.8rem; color:var(--clr-text-muted);">Uploaded exam document</div>
+                </div>
+                <a class="btn btn-primary" href="/api/admin/submissions/${item.id}/download"><i class="ph ph-download-simple"></i> Download</a>
+            </div>
+        ` : '';
+
+        const contentHtml = item.content
+            ? (typeof marked !== 'undefined' ? marked.parse(item.content) : escapeHtml(item.content))
+            : '';
+        const contentBlock = contentHtml
+            ? `<div class="markdown-content" style="white-space:pre-wrap;">${contentHtml}</div>`
+            : '';
 
         const feedbackNote = item.adminFeedback
             ? `<p style="margin-top:0.5rem; color:var(--clr-text-muted);"><strong>Previous feedback:</strong> ${escapeHtml(item.adminFeedback)}</p>`
             : '';
+
+        const downloadBtn = item.fileName ? '' : `<a class="btn btn-secondary" href="/api/admin/submissions/${item.id}/download"><i class="ph ph-download-simple"></i> Download</a>`;
 
         const reviewControls = item.status === 'pending' ? `
             <div class="input-group" style="margin-top:1rem;">
@@ -702,18 +728,19 @@ async function openSubmissionModal(id) {
             <div style="display:flex; gap:0.75rem; margin-top:0.75rem; flex-wrap:wrap;">
                 <button class="btn btn-success" data-review-action="approved" data-id="${item.id}"><i class="ph ph-check"></i> Approve</button>
                 <button class="btn btn-danger" data-review-action="rejected" data-id="${item.id}"><i class="ph ph-x"></i> Reject</button>
-                <a class="btn btn-secondary" href="/api/admin/submissions/${item.id}/download"><i class="ph ph-download-simple"></i> Download</a>
+                ${downloadBtn}
             </div>
         ` : `
             <div style="display:flex; gap:0.75rem; margin-top:1rem; flex-wrap:wrap; align-items:center;">
                 ${submissionStatusPill[item.status] || ''}
-                <a class="btn btn-secondary" href="/api/admin/submissions/${item.id}/download"><i class="ph ph-download-simple"></i> Download</a>
+                ${downloadBtn}
             </div>
         `;
 
         bodyEl.innerHTML = `
             <p style="color:var(--clr-text-muted); margin-bottom:1rem;">${metaBits}</p>
-            <div class="markdown-content" style="white-space:pre-wrap;">${contentHtml}</div>
+            ${fileCard}
+            ${contentBlock}
             ${feedbackNote}
             <div id="submission-review-error" class="form-error hidden"></div>
             ${reviewControls}
